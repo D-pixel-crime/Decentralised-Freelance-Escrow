@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {ReentrancyGuard} from "reentrancy-guard/ReentrancyGuard.sol";
+
 /**
  * @title Freelance-Escrow
  * @author D-Pixel-Crime
  * @notice Decentralised solution for trustless freelancing
  */
-contract FreelanceEscrow {
+contract FreelanceEscrow is ReentrancyGuard {
     enum EscrowState {
         AGREED,
         BUSY,
@@ -15,6 +17,7 @@ contract FreelanceEscrow {
         ALL_STAKED_AND_PENDING,
         PENDING_CLIENT_CONFIRMATION,
         JOB_COMPLETED,
+        CANCEL_REQUESTED,
         DEAL_BROKEN
     }
     address private immutable i_owner;
@@ -24,8 +27,11 @@ contract FreelanceEscrow {
     uint256 public s_clientStake = 0;
     uint256 public s_freelancerStake = 0;
     EscrowState private currState;
+    EscrowState private prevState;
+    address private s_dealBreakInitiator = address(0);
+    uint256 private s_unilateralCompletionTimestamp;
 
-    error FreelanceEscrow__InvalidOwner();
+    error FreelanceEscrow__NotParticipant();
     error FreelanceEscrow__InvalidClient();
     error FreelanceEscrow__InvalidFreelancer();
     error FreelanceEscrow__ClientAlreadyStaked(EscrowState);
@@ -35,6 +41,8 @@ contract FreelanceEscrow {
     error FreelanceEscrow__RefundError(address, uint256);
     error FreelanceEscrow__ProcessNotAllowed(EscrowState);
     error FreelanceEscrow__PaymentError(uint256, uint256);
+    error FreelanceEscrow__NoCancelRequestedYet(EscrowState);
+    error FreelanceEscrow__ActiveConfirmationTimePeriod(uint256, uint256);
 
     event FreelanceEscrow__ClientStakeCompleted(
         uint256 indexed timestamp,
@@ -50,18 +58,19 @@ contract FreelanceEscrow {
         uint256 indexed timestamp
     );
     event FreelanceEscrow__JobCompletedRejected(uint256 timestamp);
+    event FreelanceEscrow__DealCancelRequested(address indexed initiator);
     event FreelanceEscrow__DealBroken(uint256 timestamp);
     event FreelanceEscrow__FreelancerCompletedAndClientConfirmationPending(
         uint256 timestamp
     );
+    event FreelanceEscrow__AggreementCreated(
+        address indexed client,
+        address indexed freelancer
+    );
+    event Freelance__RevertedDealBreak(address indexed reverter);
 
-    modifier onlyOwner() {
-        _onlyOwner();
-        _;
-    }
-
-    modifier checkEscrowBusy() {
-        _checkEscrowBusy();
+    modifier onlyClient() {
+        _onlyClient();
         _;
     }
 
@@ -71,17 +80,11 @@ contract FreelanceEscrow {
         i_client = client;
         i_freelancer = freelancer;
         currState = EscrowState.AGREED;
+        prevState = EscrowState.AGREED;
+        emit FreelanceEscrow__AggreementCreated(client, freelancer);
     }
 
-    function addClientStake(
-        address client
-    ) public payable onlyOwner checkEscrowBusy {
-        if (client != i_client) {
-            revert FreelanceEscrow__InvalidClient();
-        }
-
-        currState = EscrowState.BUSY;
-
+    function addClientStake() public payable nonReentrant onlyClient {
         if (currState == EscrowState.AGREED) {
             currState = EscrowState.CLIENT_STAKED;
         } else if (currState == EscrowState.FREELANCER_STAKED) {
@@ -94,14 +97,10 @@ contract FreelanceEscrow {
         emit FreelanceEscrow__ClientStakeCompleted(block.timestamp, msg.value);
     }
 
-    function addfreelancerStake(
-        address freelancer
-    ) public payable onlyOwner checkEscrowBusy {
-        if (freelancer != i_freelancer) {
+    function addfreelancerStake() public payable nonReentrant {
+        if (msg.sender != i_freelancer) {
             revert FreelanceEscrow__InvalidFreelancer();
         }
-
-        currState = EscrowState.BUSY;
 
         if (currState == EscrowState.AGREED) {
             currState = EscrowState.FREELANCER_STAKED;
@@ -118,12 +117,118 @@ contract FreelanceEscrow {
         );
     }
 
-    function breakDeal() public onlyOwner checkEscrowBusy {
+    function freelancerCompletedAndRequestingFundsUnilaterally()
+        public
+        nonReentrant
+    {
+        if (msg.sender != i_freelancer) {
+            revert FreelanceEscrow__InvalidFreelancer();
+        }
+        if (currState != EscrowState.ALL_STAKED_AND_PENDING) {
+            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        }
+
+        /** @dev Start a timer of 5 days for Client Confirmations */
+
+        currState = EscrowState.PENDING_CLIENT_CONFIRMATION;
+        emit FreelanceEscrow__FreelancerCompletedAndClientConfirmationPending(
+            block.timestamp
+        );
+    }
+
+    function finaliseUnilateralJob() public nonReentrant {
+        if (currState != EscrowState.PENDING_CLIENT_CONFIRMATION) {
+            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        }
+        if (block.timestamp < s_unilateralCompletionTimestamp + 5 days) {
+            revert FreelanceEscrow__ActiveConfirmationTimePeriod(
+                s_unilateralCompletionTimestamp,
+                block.timestamp
+            );
+        }
+
+        uint256 toPay = address(this).balance;
+
+        (bool success, ) = payable(i_freelancer).call{value: toPay}("");
+        if (!success) {
+            revert FreelanceEscrow__PaymentError(toPay, block.timestamp);
+        }
+        emit FreelanceEscrow__JobCompletedAndFreelancerPaid(
+            toPay,
+            block.timestamp
+        );
+        currState = EscrowState.JOB_COMPLETED;
+    }
+
+    function rejectJobCompletion() public nonReentrant onlyClient {
+        if (currState != EscrowState.PENDING_CLIENT_CONFIRMATION) {
+            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        }
+
+        currState = EscrowState.ALL_STAKED_AND_PENDING;
+        emit FreelanceEscrow__JobCompletedRejected(block.timestamp);
+    }
+
+    function acceptJobCompletion() public nonReentrant onlyClient {
+        if (currState != EscrowState.PENDING_CLIENT_CONFIRMATION) {
+            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        }
+
+        uint256 toPay = address(this).balance;
+
+        (bool success, ) = payable(i_freelancer).call{value: toPay}("");
+        if (!success) {
+            revert FreelanceEscrow__PaymentError(toPay, block.timestamp);
+        }
+        emit FreelanceEscrow__JobCompletedAndFreelancerPaid(
+            toPay,
+            block.timestamp
+        );
+        currState = EscrowState.JOB_COMPLETED;
+    }
+
+    function jobCompletionAgreedBilaterally() public nonReentrant {
+        if (currState != EscrowState.ALL_STAKED_AND_PENDING) {
+            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        }
+        if (msg.sender != i_client) {
+            revert FreelanceEscrow__InvalidClient();
+        }
+
+        uint256 toPay = address(this).balance;
+
+        (bool success, ) = payable(i_freelancer).call{value: toPay}("");
+        if (!success) {
+            revert FreelanceEscrow__PaymentError(toPay, block.timestamp);
+        }
+        emit FreelanceEscrow__JobCompletedAndFreelancerPaid(
+            toPay,
+            block.timestamp
+        );
+        currState = EscrowState.JOB_COMPLETED;
+    }
+
+    function breakDeal() public nonReentrant {
+        if (
+            msg.sender == s_dealBreakInitiator ||
+            currState == EscrowState.JOB_COMPLETED
+        ) {
+            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        }
         if (currState == EscrowState.DEAL_BROKEN) {
             revert FreenlanceEscrow__DealAlreadyBroken(currState);
         }
+        if (msg.sender != i_client && msg.sender != i_freelancer) {
+            revert FreelanceEscrow__NotParticipant();
+        }
 
-        currState = EscrowState.BUSY;
+        if (s_dealBreakInitiator == address(0)) {
+            prevState = currState;
+            s_dealBreakInitiator = msg.sender;
+            currState = EscrowState.CANCEL_REQUESTED;
+            emit FreelanceEscrow__DealCancelRequested(msg.sender);
+            return;
+        }
 
         uint256 toRefund = s_clientStake;
         s_clientStake = 0;
@@ -143,62 +248,22 @@ contract FreelanceEscrow {
         emit FreelanceEscrow__DealBroken(block.timestamp);
     }
 
-    function freelancerCompleted(
-        address freelancer
-    ) public onlyOwner checkEscrowBusy {
-        if (freelancer != i_freelancer) {
-            revert FreelanceEscrow__InvalidFreelancer();
+    function cancelDealBreak() public nonReentrant {
+        if (msg.sender != i_client && msg.sender != i_freelancer) {
+            revert FreelanceEscrow__NotParticipant();
         }
-        if (currState != EscrowState.ALL_STAKED_AND_PENDING) {
-            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        if (currState != EscrowState.CANCEL_REQUESTED) {
+            revert FreelanceEscrow__NoCancelRequestedYet(currState);
         }
 
-        currState = EscrowState.BUSY;
-
-        /** @dev Start a timer of 5 days for Client Confirmations */
-
-        currState = EscrowState.PENDING_CLIENT_CONFIRMATION;
-        emit FreelanceEscrow__FreelancerCompletedAndClientConfirmationPending(
-            block.timestamp
-        );
-    }
-
-    function rejectJobCompletion(
-        address client
-    ) public onlyOwner checkEscrowBusy {
-        if (client != i_client) {
-            revert FreelanceEscrow__InvalidClient();
-        }
-        if (currState != EscrowState.PENDING_CLIENT_CONFIRMATION) {
-            revert FreelanceEscrow__ProcessNotAllowed(currState);
+        if (prevState == EscrowState.PENDING_CLIENT_CONFIRMATION) {
+            currState = EscrowState.ALL_STAKED_AND_PENDING;
+        } else {
+            currState = prevState;
         }
 
-        currState = EscrowState.ALL_STAKED_AND_PENDING;
-        emit FreelanceEscrow__JobCompletedRejected(block.timestamp);
-    }
-
-    function acceptJobCompletion(
-        address client
-    ) public onlyOwner checkEscrowBusy {
-        if (client != i_client) {
-            revert FreelanceEscrow__InvalidClient();
-        }
-        if (currState != EscrowState.PENDING_CLIENT_CONFIRMATION) {
-            revert FreelanceEscrow__ProcessNotAllowed(currState);
-        }
-
-        currState = EscrowState.BUSY;
-        uint256 toPay = address(this).balance;
-
-        (bool success, ) = payable(i_freelancer).call{value: toPay}("");
-        if (!success) {
-            revert FreelanceEscrow__PaymentError(toPay, block.timestamp);
-        }
-        emit FreelanceEscrow__JobCompletedAndFreelancerPaid(
-            toPay,
-            block.timestamp
-        );
-        currState = EscrowState.JOB_COMPLETED;
+        s_dealBreakInitiator = address(0);
+        emit Freelance__RevertedDealBreak(msg.sender);
     }
 
     /** @dev Getter Functions */
@@ -206,20 +271,10 @@ contract FreelanceEscrow {
         return currState;
     }
 
-    function getOwner() public view returns (address) {
-        return i_owner;
-    }
-
     /** @dev Internal Functions */
-    function _checkEscrowBusy() internal view {
-        if (currState == EscrowState.BUSY) {
-            revert FreenlanceEscrow__Busy(currState);
-        }
-    }
-
-    function _onlyOwner() internal view {
-        if (msg.sender != i_owner) {
-            revert FreelanceEscrow__InvalidOwner();
+    function _onlyClient() public view {
+        if (msg.sender != i_client) {
+            revert FreelanceEscrow__InvalidClient();
         }
     }
 }
