@@ -1,8 +1,7 @@
 package utils
 
 import (
-	"log"
-
+	"github.com/charmbracelet/log"
 	"github.com/joho/godotenv"
 )
 
@@ -10,6 +9,6 @@ import (
 func LoadENV() {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error Loading .env Files")
+		log.Error("Error Loading .env Files", "err", err)
 	}
 }
