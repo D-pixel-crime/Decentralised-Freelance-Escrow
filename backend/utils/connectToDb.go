@@ -16,7 +16,7 @@ var DBClient *mongo.Client
 func ConnectToDb() (*mongo.Client, error) {
 	uri := os.Getenv("MONGO_CONNECT_URI")
 	if uri == "" {
-		return nil, fmt.Errorf("Empty MongoDB Connection string!")
+		return nil, fmt.Errorf("Empty MongoDB Connection String!")
 	}
 
 	DBClient, err := mongo.Connect(options.Client().ApplyURI(uri))
