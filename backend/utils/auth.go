@@ -11,19 +11,21 @@ import (
 )
 
 type Claims struct {
-	Username string `json:"username"`
-	Email    string `json:"emai"`
-	Role     string `json:"role"`
+	Username   string `json:"username"`
+	Email      string `json:"emai"`
+	Role       string `json:"role"`
+	EthAccount string `json:"ethAccount"`
 	jwt.RegisteredClaims
 }
 
-func GenerateTokens(username, email, role string) (string, string, error) {
+func GenerateTokens(username, email, role, ethAccount string) (string, string, error) {
 	secret := []byte(os.Getenv("JWT_SECRET"))
 
 	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, Claims{
-		Username: username,
-		Role:     role,
-		Email:    email,
+		Username:   username,
+		Role:       role,
+		Email:      email,
+		EthAccount: ethAccount,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
 		},
@@ -62,6 +64,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.Set("username", claims.Username)
 			c.Set("role", claims.Role)
 			c.Set("email", claims.Email)
+			c.Set("ethAccount", claims.EthAccount)
 			c.Next()
 		} else {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Token: " + err.Error()})

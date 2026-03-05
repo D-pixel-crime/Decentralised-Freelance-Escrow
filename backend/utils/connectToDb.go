@@ -7,11 +7,33 @@ import (
 	"time"
 
 	"github.com/charmbracelet/log"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 var DBClient *mongo.Client
+
+func createUserIndexes() error {
+	coll := DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("clients")
+	indexModel := mongo.IndexModel{
+		Keys:    bson.D{{Key: "username", Value: 1}, {Key: "email", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+	_, err := coll.Indexes().CreateOne(context.TODO(), indexModel)
+	if err != nil {
+		return err
+	}
+
+	coll = DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
+	indexModel = mongo.IndexModel{
+		Keys:    bson.D{{Key: "username", Value: 1}, {Key: "email", Value: 1}},
+		Options: options.Index().SetUnique(true),
+	}
+	_, err = coll.Indexes().CreateOne(context.TODO(), indexModel)
+
+	return err
+}
 
 func ConnectToDb() (*mongo.Client, error) {
 	uri := os.Getenv("MONGO_CONNECT_URI")
@@ -29,6 +51,12 @@ func ConnectToDb() (*mongo.Client, error) {
 
 	if err := DBClient.Ping(ctx, nil); err != nil {
 		return nil, fmt.Errorf("Database Non-Responsive! Error:%s", err)
+	}
+
+	err = createUserIndexes()
+	if err != nil {
+		log.Fatalf("Error creating Database Indexes!")
+		return DBClient, err
 	}
 
 	log.Infof("Database Connection Successful: %s", uri)

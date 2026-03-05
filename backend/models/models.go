@@ -3,11 +3,12 @@ package models
 import "go.mongodb.org/mongo-driver/v2/bson"
 
 type BaseUser struct {
-	ID         bson.ObjectID `bson:"_id,omitempty" json:"id"`
-	Username   string        `bson:"username" json:"username"`
-	Email      string        `bson:"email" json:"email"`
-	Password   string        `bson:"password" json:"-"`
-	EthAccount string        `bson:"account" json:"account"`
+	ID       bson.ObjectID `bson:"_id,omitempty" json:"id"`
+	Username string        `bson:"username" json:"username"`
+	Email    string        `bson:"email" json:"email"`
+	// Password   string        `bson:"password" json:"-"`
+	EthAccount string `bson:"ethAccount" json:"ethAccount"`
+	Nonce      string `bson:"nonce" json:"nonce"`
 }
 
 type Client struct {

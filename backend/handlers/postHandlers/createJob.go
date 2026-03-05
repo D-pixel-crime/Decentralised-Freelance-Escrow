@@ -12,32 +12,29 @@ import (
 )
 
 type ReqStruct struct {
-	ClientID     bson.ObjectID `json:"clientID"`
-	FreelancerID bson.ObjectID `json:"freelancerID"`
+	ClientUsername     string `json:"clientUsername" binding:"required"`
+	FreelancerUsername string `json:"freelancerUsername" binding:"required"`
 }
 
-func checkClientAndFreelancer(clientID, freelancerID bson.ObjectID) (bool, error) {
+func checkClientAndFreelancer(clientUsername, freelancerUsername string) (bson.ObjectID, bson.ObjectID, error) {
+	var res1 models.Client
+	var res2 models.Freelancer
+
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("clients")
-	filer := bson.D{{Key: "rating", Value: clientID}}
-	cnt, err := coll.CountDocuments(context.TODO(), filer)
+	filter := bson.D{{Key: "username", Value: clientUsername}}
+	err := coll.FindOne(context.TODO(), filter).Decode(&res1)
 	if err != nil {
-		return false, err
-	}
-	if cnt <= 0 {
-		return false, nil
+		return bson.ObjectID{}, bson.ObjectID{}, err
 	}
 
 	coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
-	filer = bson.D{{Key: "rating", Value: freelancerID}}
-	cnt, err = coll.CountDocuments(context.TODO(), filer)
+	filter = bson.D{{Key: "username", Value: freelancerUsername}}
+	err = coll.FindOne(context.TODO(), filter).Decode(&res2)
 	if err != nil {
-		return false, err
-	}
-	if cnt <= 0 {
-		return false, nil
+		return bson.ObjectID{}, bson.ObjectID{}, err
 	}
 
-	return true, nil
+	return res1.ID, res2.ID, nil
 }
 
 func CreateJob(c *gin.Context) {
@@ -48,26 +45,25 @@ func CreateJob(c *gin.Context) {
 		return
 	}
 
-	isPresent, err := checkClientAndFreelancer(reqBody.ClientID, reqBody.FreelancerID)
+	clientID, freelancerID, err := checkClientAndFreelancer(reqBody.ClientUsername, reqBody.FreelancerUsername)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if !isPresent {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Client or Freelancer Not Found!"})
-		return
-	}
 
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
-	doc := models.Job{ClientID: reqBody.ClientID, FreelancerID: reqBody.FreelancerID, Status: "Active"}
+	doc := models.Job{ClientID: clientID, FreelancerID: freelancerID, Status: "Active"}
 
-	_, err = coll.InsertOne(context.Background(), doc)
+	res, err := coll.InsertOne(context.Background(), doc)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Create Job! " + err.Error()})
 		return
 	}
 
+	jobId := res.InsertedID.(bson.ObjectID).Hex()
+
 	c.JSON(http.StatusOK, gin.H{
+		"jobId":   jobId,
 		"message": "Job Created",
 	})
 }

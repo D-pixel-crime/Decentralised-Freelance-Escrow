@@ -9,39 +9,44 @@ import (
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/spruceid/siwe-go"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type LoginRequest struct {
 	UsernameOrEmail string `json:"username" binding:"required"`
-	Password        string `json:"password" binding:"required"`
-	Role            string `json:"role" binding:"required"`
+	// Password        string `json:"password" binding:"required"`
+	Role       string `json:"role" binding:"required"`
+	EthAccount string `json:"ethAccount" binding:"required"`
 }
 
-func getClientHash(usernameOrEmail string) (string, string, error) {
+func checkClientAndProduceNonce(usernameOrEmail string) (string, error) {
 	filter := bson.M{
 		"$or": []bson.M{
 			{"username": usernameOrEmail},
 			{"email": usernameOrEmail},
 		},
 	}
+	// Creating nonce
+	nonce := siwe.GenerateNonce()
+	update := bson.M{"$set": bson.M{"nonce": nonce}}
 
 	var res models.Client
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("clients")
-	err := coll.FindOne(context.TODO(), filter).Decode(&res)
+	err := coll.FindOneAndUpdate(context.TODO(), filter, update).Decode(&res)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return "", "", fmt.Errorf("No documents found!")
+			return "", err
 		}
 
-		return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
+		return "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
 	}
 
-	return res.Password, res.Email, nil
+	return nonce, nil
 }
 
-func getFreelancerHash(usernameOrEmail string) (string, string, error) {
+func checkFreelancerAndProduceNonce(usernameOrEmail string) (string, error) {
 	filter := bson.M{
 		"$or": []bson.M{
 			{"username": usernameOrEmail},
@@ -49,24 +54,27 @@ func getFreelancerHash(usernameOrEmail string) (string, string, error) {
 		},
 	}
 
+	// Creating nonce
+	nonce := siwe.GenerateNonce()
+	update := bson.M{"$set": bson.M{"nonce": nonce}}
+
 	var res models.Freelancer
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
-	err := coll.FindOne(context.TODO(), filter).Decode(&res)
+	err := coll.FindOneAndUpdate(context.TODO(), filter, update).Decode(&res)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return "", "", err
+			return "", err
 		}
 
-		return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
+		return "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
 	}
 
-	return res.Password, res.Email, nil
+	return nonce, nil
 }
 
-func Login(c *gin.Context) {
+func LoginPhase1(c *gin.Context) {
 	var reqBody LoginRequest
-	var passwordHash string
-	var email string
+	var nonce string
 	var err error
 
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
@@ -75,10 +83,10 @@ func Login(c *gin.Context) {
 	}
 
 	switch reqBody.Role {
-	case "clients":
-		passwordHash, email, err = getClientHash(reqBody.UsernameOrEmail)
+	case "client":
+		nonce, err = checkClientAndProduceNonce(reqBody.UsernameOrEmail)
 	case "freelancer":
-		passwordHash, email, err = getFreelancerHash(reqBody.UsernameOrEmail)
+		nonce, err = checkFreelancerAndProduceNonce(reqBody.UsernameOrEmail)
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid User Type!"})
 		return
@@ -92,23 +100,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	isMatch := utils.ComparePasswordAndHash(passwordHash, reqBody.Password)
-	if !isMatch {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Incorrect Password!"})
-		return
-	}
-
-	accessToken, refreshToken, err := utils.GenerateTokens(reqBody.UsernameOrEmail, email, reqBody.Role)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error Generating Token: " + err.Error()})
-		return
-	}
-
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "Login successful",
-		"user":         reqBody.UsernameOrEmail,
-		"role":         reqBody.Role,
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
+		"nonce": nonce,
 	})
 }
