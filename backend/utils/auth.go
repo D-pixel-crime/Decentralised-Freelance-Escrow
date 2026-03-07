@@ -21,7 +21,7 @@ type Claims struct {
 func GenerateTokens(username, email, role, ethAccount string) (string, string, error) {
 	secret := []byte(os.Getenv("JWT_SECRET"))
 
-	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, Claims{
+	accessToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
 		Username:   username,
 		Role:       role,
 		Email:      email,
@@ -35,7 +35,7 @@ func GenerateTokens(username, email, role, ethAccount string) (string, string, e
 		return "", "", err
 	}
 
-	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
+	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"username": username,
 		"exp":      time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}).SignedString(secret)

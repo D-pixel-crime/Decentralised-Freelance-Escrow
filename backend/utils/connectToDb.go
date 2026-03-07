@@ -41,10 +41,12 @@ func ConnectToDb() (*mongo.Client, error) {
 		return nil, fmt.Errorf("Empty MongoDB Connection String!")
 	}
 
-	DBClient, err := mongo.Connect(options.Client().ApplyURI(uri))
+	client, err := mongo.Connect(options.Client().ApplyURI(uri))
 	if err != nil {
 		return nil, fmt.Errorf("Error Connecting to Database! Error:%s", err)
 	}
+
+	DBClient = client
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

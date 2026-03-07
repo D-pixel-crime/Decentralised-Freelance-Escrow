@@ -72,7 +72,7 @@ func checkFreelancerAndProduceNonce(usernameOrEmail string) (string, error) {
 	return nonce, nil
 }
 
-func LoginPhase1(c *gin.Context) {
+func LoginInitiate(c *gin.Context) {
 	var reqBody LoginRequest
 	var nonce string
 	var err error

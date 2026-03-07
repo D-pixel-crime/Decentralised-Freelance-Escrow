@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	authRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/authRouters"
 	getRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/getRouters"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/gin-contrib/cors"
@@ -32,6 +33,7 @@ func main() {
 	}))
 
 	getRouter.GET_Routes(router)
+	authRouter.AUTH_Routes(router)
 
 	port := os.Getenv("PORT")
 	if port == "" {

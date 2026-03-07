@@ -15,7 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-type LoginVerification struct {
+type LoginVerificationRequest struct {
 	EthAccount string `json:"ethAccount" binding:"required"`
 	Role       string `json:"role" binding:"required"`
 	Message    string `json:"message" binding:"required"`
@@ -85,8 +85,8 @@ func verifyFreelancer(ethAccount, message, signature string) (string, string, er
 	return res.Username, res.Email, nil
 }
 
-func LoginPhase2(c *gin.Context) {
-	var reqBody LoginVerification
+func LoginVerify(c *gin.Context) {
+	var reqBody LoginVerificationRequest
 	var username, email, role string
 	var err error
 

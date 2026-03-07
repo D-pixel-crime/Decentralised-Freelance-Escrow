@@ -1,0 +1,149 @@
+'use client'
+
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: { method: string }) => Promise<string[]>;
+    };
+  }
+}
+
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import Link from "next/link"
+import React, { useState } from "react"
+import axios from "axios";
+
+const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
+  const [walletAddr, setWalletAddr] = useState("");
+  const [details, setDetails] = useState({ email: "", username: "", role: "" })
+
+  const connectToWallet = async () => {
+    if (typeof window.ethereum !== 'undefined') {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        const ethAccount = accounts[0];
+        setWalletAddr(ethAccount);
+      } catch (error) {
+        alert("Error fetching wallet details! Please try again later.");
+        console.log(error);
+      }
+    } else {
+      alert("Please Install Metamask!");
+    }
+  }
+
+  const handleSignup = async (e: React.SubmitEvent) => {
+    e.preventDefault()
+    if (!walletAddr) {
+      alert("Please Connect your Ethereum Wallet!");
+      return;
+    }
+    console.log(details);
+    console.log(walletAddr);
+
+    try {
+      const backendUri = process.env.NEXT_PUBLIC_BACKEND_URI;
+      if (!backendUri) {
+        alert("Backend URI Missing!");
+        return;
+      }
+      const response = await axios.post(`${backendUri}/auth/signup`, { ...details, ethAccount: walletAddr });
+      console.log(response);
+    } catch (error) {
+      alert("Error in Signup!" + error);
+      return;
+    }
+
+    setWalletAddr("");
+    setDetails({ username: "", role: "", email: "" })
+  }
+
+  return (
+    <Card {...props}>
+      <CardHeader className="flex-center w-full flex-col">
+        <CardTitle className="text-lg">Create an account</CardTitle>
+        <CardDescription>
+          Enter your information below to create your account
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSignup}>
+          <FieldGroup>
+            <Field>
+              <FieldLabel htmlFor="username">Username<span className="text-destructive">*</span></FieldLabel>
+              <Input id="username" type="text" placeholder="john_doe_69" required value={details.username} onChange={(e) => setDetails({ ...details, username: e.target.value })} />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="email">Email<span className="text-destructive">*</span></FieldLabel>
+              <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
+                required
+                value={details.email} onChange={(e) => setDetails({ ...details, email: e.target.value })}
+              />
+              <FieldDescription>
+                We&apos;ll use this to contact you. We will not share your email with anyone else.
+              </FieldDescription>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="role">Select Role<span className="text-destructive">*</span></FieldLabel>
+              <Select value={details.role} onValueChange={(val) => setDetails({ ...details, role: val })} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Role</SelectLabel>
+                    <SelectItem value="freelancer">Freelancer</SelectItem>
+                    <SelectItem value="client">Client</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="ethAccount">Ethereum Wallet Address<span className="text-destructive">*</span></FieldLabel>
+              <div className="flex flex-row justify-between items-center gap-2">
+                <Input id="ethAccount" value={walletAddr} type="text" placeholder="0xxxxxxxxxxxxxxxxxx......" disabled className="disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" />
+                <Button type="button" className="cursor-pointer" onClick={connectToWallet}>Connect Wallet</Button>
+              </div>
+            </Field>
+            <FieldGroup>
+              <Field>
+                <Button type="submit" className="cursor-pointer">Create Account</Button>
+                <FieldDescription className="px-6 text-center">
+                  Already have an account? <Link href="/login">Login</Link>
+                </FieldDescription>
+              </Field>
+            </FieldGroup>
+          </FieldGroup>
+        </form>
+      </CardContent>
+    </Card>
+  )
+}
+
+export default SignupForm

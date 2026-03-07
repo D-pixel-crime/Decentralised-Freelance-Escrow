@@ -3,6 +3,7 @@ package authhandlers
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -22,7 +23,7 @@ type SignupRequest struct {
 }
 
 func clientSignup(username, email, ethAccount string) error {
-	coll := utils.DBClient.Database(os.Getenv("DATATBASE_NAME")).Collection("client")
+	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
 	doc := models.Client{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}, RequestedJobs: []bson.ObjectID{}}
 
 	_, err := coll.InsertOne(context.Background(), doc)
@@ -38,7 +39,7 @@ func clientSignup(username, email, ethAccount string) error {
 }
 
 func freelancerSignup(username, email, ethAccount string) error {
-	coll := utils.DBClient.Database(os.Getenv("DATATBASE_NAME")).Collection("freelancers")
+	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
 	doc := models.Freelancer{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}, ActiveJobs: []bson.ObjectID{}}
 
 	_, err := coll.InsertOne(context.Background(), doc)
@@ -58,28 +59,32 @@ func Signup(c *gin.Context) {
 	var err error
 
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
+		log.Println("Validation Error:", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	accessToken, refreshToken, err := utils.GenerateTokens(reqBody.Username, reqBody.Email, reqBody.Role, reqBody.EthAccount)
+	if err != nil {
+		log.Fatalln("Error Generating Tokens!", err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error Generating Token: " + err.Error()})
 		return
 	}
 
 	switch reqBody.Role {
 	case "client":
 		err = clientSignup(reqBody.Username, reqBody.Email, reqBody.EthAccount)
-	case "freelancers":
+	case "freelancer":
 		err = freelancerSignup(reqBody.Username, reqBody.Email, reqBody.EthAccount)
 	default:
+		log.Println("Type Error!")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Type!"})
 		return
 	}
 
 	if err != nil {
+		log.Fatalln("Error Inserting Data!", err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	accessToken, refreshToken, err := utils.GenerateTokens(reqBody.Username, reqBody.Email, reqBody.Role, reqBody.EthAccount)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error Generating Token: " + err.Error()})
 		return
 	}
 
