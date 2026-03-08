@@ -20,14 +20,14 @@ func checkClientAndFreelancer(clientUsername, freelancerUsername string) (bson.O
 	var res1 models.Client
 	var res2 models.Freelancer
 
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("clients")
+	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
 	filter := bson.D{{Key: "username", Value: clientUsername}}
 	err := coll.FindOne(context.TODO(), filter).Decode(&res1)
 	if err != nil {
 		return bson.ObjectID{}, bson.ObjectID{}, err
 	}
 
-	coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
+	coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
 	filter = bson.D{{Key: "username", Value: freelancerUsername}}
 	err = coll.FindOne(context.TODO(), filter).Decode(&res2)
 	if err != nil {

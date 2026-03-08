@@ -35,16 +35,20 @@ import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import React, { useState } from "react"
 import axios from "axios";
+import { getAddress } from "ethers";
+import { useRouter } from "next/navigation";
 
 const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
   const [walletAddr, setWalletAddr] = useState("");
   const [details, setDetails] = useState({ email: "", username: "", role: "" })
 
+  const router = useRouter();
+
   const connectToWallet = async () => {
     if (typeof window.ethereum !== 'undefined') {
       try {
         const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const ethAccount = accounts[0];
+        const ethAccount = getAddress(accounts[0]);
         setWalletAddr(ethAccount);
       } catch (error) {
         alert("Error fetching wallet details! Please try again later.");
@@ -61,17 +65,25 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
       alert("Please Connect your Ethereum Wallet!");
       return;
     }
+    const backendUri = process.env.NEXT_PUBLIC_BACKEND_URI;
+    if (!backendUri) {
+      alert("Backend URI Missing!");
+      return;
+    }
     console.log(details);
     console.log(walletAddr);
 
     try {
-      const backendUri = process.env.NEXT_PUBLIC_BACKEND_URI;
-      if (!backendUri) {
-        alert("Backend URI Missing!");
-        return;
-      }
-      const response = await axios.post(`${backendUri}/auth/signup`, { ...details, ethAccount: walletAddr });
-      console.log(response);
+      await axios.post(`${backendUri}/auth/signup`, { ...details, ethAccount: walletAddr });
+
+      const cookieSettings = `; path=/; max-age=${3600 * 24}; SameSite=Lax`; // 7 days
+      document.cookie = `username=${details.username}${cookieSettings}`;
+      document.cookie = `email=${details.email}${cookieSettings}`;
+      document.cookie = `role=${details.role}${cookieSettings}`;
+      document.cookie = `ethAccount=${walletAddr}${cookieSettings}`;
+
+      router.push("/");
+      router.refresh();
     } catch (error) {
       alert("Error in Signup!" + error);
       return;
@@ -85,7 +97,7 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
     <Card {...props}>
       <CardHeader className="flex-center w-full flex-col">
         <CardTitle className="text-lg">Create an account</CardTitle>
-        <CardDescription>
+        <CardDescription className="text-center">
           Enter your information below to create your account
         </CardDescription>
       </CardHeader>
@@ -133,7 +145,7 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
             </Field>
             <FieldGroup>
               <Field>
-                <Button type="submit" className="cursor-pointer">Create Account</Button>
+                <Button type="submit" className="cursor-pointer bg-blue-600 hover:bg-blue-500">Create Account</Button>
                 <FieldDescription className="px-6 text-center">
                   Already have an account? <Link href="/login">Login</Link>
                 </FieldDescription>

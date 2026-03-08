@@ -22,11 +22,22 @@ type SignupRequest struct {
 	EthAccount string `json:"ethAccount" binding:"required"`
 }
 
-func clientSignup(username, email, ethAccount string) error {
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
-	doc := models.Client{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}, RequestedJobs: []bson.ObjectID{}}
+func userSignup(username, email, ethAccount, role string) error {
+	var err error
 
-	_, err := coll.InsertOne(context.Background(), doc)
+	switch role {
+	case "client":
+		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
+		doc := models.Client{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}, RequestedJobs: []bson.ObjectID{}}
+		_, err = coll.InsertOne(context.Background(), doc)
+	case "freelancer":
+		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
+		doc := models.Freelancer{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}, ActiveJobs: []bson.ObjectID{}}
+		_, err = coll.InsertOne(context.Background(), doc)
+	default:
+		return fmt.Errorf("Invalid User Type!")
+	}
+
 	if err != nil {
 		if mongo.IsDuplicateKeyError(err) {
 			return fmt.Errorf("Username or Email already exists!")
@@ -38,25 +49,8 @@ func clientSignup(username, email, ethAccount string) error {
 	return nil
 }
 
-func freelancerSignup(username, email, ethAccount string) error {
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
-	doc := models.Freelancer{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}, ActiveJobs: []bson.ObjectID{}}
-
-	_, err := coll.InsertOne(context.Background(), doc)
-	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return fmt.Errorf("Username or Email already exists!")
-
-		}
-		return fmt.Errorf("Failed To Insert Freelancer!")
-	}
-
-	return nil
-}
-
 func Signup(c *gin.Context) {
 	var reqBody SignupRequest
-	var err error
 
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
 		log.Println("Validation Error:", err.Error())
@@ -71,30 +65,22 @@ func Signup(c *gin.Context) {
 		return
 	}
 
-	switch reqBody.Role {
-	case "client":
-		err = clientSignup(reqBody.Username, reqBody.Email, reqBody.EthAccount)
-	case "freelancer":
-		err = freelancerSignup(reqBody.Username, reqBody.Email, reqBody.EthAccount)
-	default:
-		log.Println("Type Error!")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Type!"})
-		return
-	}
-
+	err = userSignup(reqBody.Username, reqBody.Email, reqBody.EthAccount, reqBody.Role)
 	if err != nil {
-		log.Fatalln("Error Inserting Data!", err.Error())
+		log.Println("Error Creating User!", err.Error())
+		if err.Error() == "Invalid User Type!" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("accessToken", accessToken, 3600*24, "/", "localhost", false, true)
+	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "localhost", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "Signup successful",
-		"username":     reqBody.Username,
-		"email":        reqBody.Email,
-		"role":         reqBody.Role,
-		"ethAccount":   reqBody.EthAccount,
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
+		"message": "Signup Successful.",
 	})
 }

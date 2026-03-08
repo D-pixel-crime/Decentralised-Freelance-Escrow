@@ -15,9 +15,9 @@ import (
 var DBClient *mongo.Client
 
 func createUserIndexes() error {
-	coll := DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("clients")
+	coll := DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
 	indexModel := mongo.IndexModel{
-		Keys:    bson.D{{Key: "username", Value: 1}, {Key: "email", Value: 1}},
+		Keys:    bson.D{{Key: "username", Value: 1}, {Key: "email", Value: 1}, {Key: "ethAccount", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
 	_, err := coll.Indexes().CreateOne(context.TODO(), indexModel)
@@ -25,9 +25,9 @@ func createUserIndexes() error {
 		return err
 	}
 
-	coll = DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
+	coll = DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
 	indexModel = mongo.IndexModel{
-		Keys:    bson.D{{Key: "username", Value: 1}, {Key: "email", Value: 1}},
+		Keys:    bson.D{{Key: "username", Value: 1}, {Key: "email", Value: 1}, {Key: "ethAccount", Value: 1}},
 		Options: options.Index().SetUnique(true),
 	}
 	_, err = coll.Indexes().CreateOne(context.TODO(), indexModel)

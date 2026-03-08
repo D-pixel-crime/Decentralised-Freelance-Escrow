@@ -8,8 +8,7 @@ import (
 
 func AUTH_Routes(authRouter *gin.Engine) {
 	groupedAuth := authRouter.Group("/auth")
-
 	groupedAuth.POST("/signup", authHandlers.Signup)
-	groupedAuth.POST("/loginInitiate", authHandlers.LoginInitiate)
-	groupedAuth.POST("/loginVerify", authHandlers.LoginVerify)
+	groupedAuth.POST("/login/initiate", authHandlers.InitiateLogin)
+	groupedAuth.POST("/login/verify", authHandlers.VerifyLogin)
 }

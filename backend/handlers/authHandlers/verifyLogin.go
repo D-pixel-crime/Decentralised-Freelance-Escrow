@@ -42,71 +42,67 @@ func signatureVerification(ethAccount, message, signature, nonce string, update,
 	return nil
 }
 
-// returns username, email, role and error
-func verifyClient(ethAccount, message, signature string) (string, string, error) {
+func verifyUser(ethAccount, role, message, signature string) (string, string, error) {
 	filter := bson.M{"ethAccount": ethAccount}
 	update := bson.M{"$set": bson.M{"nonce": ""}}
 
-	var res models.Client
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("clients")
-	err := coll.FindOne(context.TODO(), filter).Decode(&res)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return "", "", err
-		}
-		return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
-	}
-
-	if signatureVerification(ethAccount, message, signature, res.Nonce, update, filter, coll) != nil {
-		return "", "", err
-	}
-
-	return res.Username, res.Email, nil
-}
-
-func verifyFreelancer(ethAccount, message, signature string) (string, string, error) {
-	filter := bson.M{"ethAccount": ethAccount}
-	update := bson.M{"$set": bson.M{"nonce": ""}}
-
-	var res models.Freelancer
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancers")
-	err := coll.FindOne(context.TODO(), filter).Decode(&res)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return "", "", err
-		}
-		return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
-	}
-
-	if err = signatureVerification(ethAccount, message, signature, res.Nonce, update, filter, coll); err != nil {
-		return "", "", err
-	}
-
-	return res.Username, res.Email, nil
-}
-
-func LoginVerify(c *gin.Context) {
-	var reqBody LoginVerificationRequest
-	var username, email, role string
 	var err error
+	var username, email, nonce string
+	var coll *mongo.Collection
+
+	switch role {
+	case "client":
+		var res models.Client
+		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
+		err = coll.FindOne(context.TODO(), filter).Decode(&res)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				return "", "", err
+			}
+			return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
+		}
+
+		username = res.Username
+		email = res.Email
+		nonce = res.Nonce
+	case "freelancer":
+		var res models.Freelancer
+		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
+		err = coll.FindOne(context.TODO(), filter).Decode(&res)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				return "", "", err
+			}
+			return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
+		}
+
+		username = res.Username
+		email = res.Email
+		nonce = res.Nonce
+	default:
+		return "", "", fmt.Errorf("Invalid User Type!")
+	}
+
+	if err = signatureVerification(ethAccount, message, signature, nonce, update, filter, coll); err != nil {
+		return "", "", err
+	}
+	return username, email, nil
+}
+
+func VerifyLogin(c *gin.Context) {
+	var reqBody LoginVerificationRequest
 
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	switch reqBody.Role {
-	case "client":
-		username, email, err = verifyClient(reqBody.EthAccount, reqBody.Message, reqBody.Signature)
-	case "freelancer":
-		username, email, err = verifyFreelancer(reqBody.EthAccount, reqBody.Message, reqBody.Signature)
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid User Type!"})
-		return
-	}
+	username, email, err := verifyUser(reqBody.EthAccount, reqBody.Role, reqBody.Message, reqBody.Signature)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User Not Found!"})
+		} else if err.Error() == "Invalid User Type!" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!"})
 		}
@@ -119,12 +115,13 @@ func LoginVerify(c *gin.Context) {
 		return
 	}
 
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("accessToken", accessToken, 3600*24, "/", "localhost", false, true)
+	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "localhost", false, true)
+
 	c.JSON(http.StatusOK, gin.H{
-		"username":     username,
-		"email":        email,
-		"role":         role,
-		"ethAccount":   reqBody.EthAccount,
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
+		"message":  "Login Successful",
+		"username": username,
+		"email":    email,
 	})
 }
