@@ -14,11 +14,11 @@ func GET_Routes(getRouter *gin.Engine) {
 		c.JSON(http.StatusOK, gin.H{"message": "pong"})
 	})
 
-	protected := getRouter.Group("/api/get")
+	protectedRouter := getRouter.Group("/api/get")
 
-	protected.Use(utils.AuthMiddleware())
+	protectedRouter.Use(utils.AuthMiddleware())
 	{
-		protected.GET("/balance/:address", gethandlers.GetWalletBalance)
+		protectedRouter.GET("/balance/:address", gethandlers.GetWalletBalance)
 	}
 
 }

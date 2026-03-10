@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
@@ -116,8 +117,8 @@ func VerifyLogin(c *gin.Context) {
 	}
 
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("accessToken", accessToken, 3600*24, "/", "localhost", false, true)
-	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "localhost", false, true)
+	c.SetCookie("accessToken", accessToken, int(time.Hour*24), "/", "localhost", false, true)
+	c.SetCookie("refreshToken", refreshToken, int(time.Hour*24*7), "/", "localhost", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Login Successful",

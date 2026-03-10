@@ -9,61 +9,62 @@ import (
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-type ReqStruct struct {
-	ClientUsername     string `json:"clientUsername" binding:"required"`
-	FreelancerUsername string `json:"freelancerUsername" binding:"required"`
+type jobCreationRequest struct {
+	ClientEthAccount string        `json:"clientEthAccount" binding:"required"`
+	JobId            bson.ObjectID `json:"jobId" binding:"required"`
 }
 
-func checkClientAndFreelancer(clientUsername, freelancerUsername string) (bson.ObjectID, bson.ObjectID, error) {
-	var res1 models.Client
-	var res2 models.Freelancer
-
+func checkClient(clientEthAccount string) (bson.ObjectID, error) {
+	var res models.Client
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
-	filter := bson.D{{Key: "username", Value: clientUsername}}
-	err := coll.FindOne(context.TODO(), filter).Decode(&res1)
+	filter := bson.M{"ethAccount": clientEthAccount}
+
+	err := coll.FindOne(context.TODO(), filter).Decode(&res)
 	if err != nil {
-		return bson.ObjectID{}, bson.ObjectID{}, err
+		return bson.ObjectID{}, err
 	}
 
-	coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
-	filter = bson.D{{Key: "username", Value: freelancerUsername}}
-	err = coll.FindOne(context.TODO(), filter).Decode(&res2)
-	if err != nil {
-		return bson.ObjectID{}, bson.ObjectID{}, err
-	}
-
-	return res1.ID, res2.ID, nil
+	return res.ID, nil
 }
 
-func CreateJob(c *gin.Context) {
-	var reqBody ReqStruct
-
-	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	clientID, freelancerID, err := checkClientAndFreelancer(reqBody.ClientUsername, reqBody.FreelancerUsername)
+func jobCreation(clientEthAccount string) error {
+	clientId, err := checkClient(clientEthAccount)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
+		return err
 	}
 
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
-	doc := models.Job{ClientID: clientID, FreelancerID: freelancerID, Status: "Active"}
+	doc := models.Job{ClientID: clientId, Status: models.UNALLOCATED}
 
-	res, err := coll.InsertOne(context.Background(), doc)
+	_, err = coll.InsertOne(context.Background(), doc)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to Create Job! " + err.Error()})
+		return err
+	}
+
+	return nil
+}
+
+func CreateJob(c *gin.Context) {
+	var reqBody jobCreationRequest
+	var err error
+
+	if err = c.ShouldBindJSON(&reqBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect Request Format!"})
 		return
 	}
 
-	jobId := res.InsertedID.(bson.ObjectID).Hex()
+	err = jobCreation(reqBody.ClientEthAccount)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User Not Found!"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!"})
+		}
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"jobId":   jobId,
-		"message": "Job Created",
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Job Created!"})
 }

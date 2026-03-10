@@ -5,6 +5,7 @@ import (
 
 	authRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/authRouters"
 	getRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/getRouters"
+	postRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/postRouters"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/gin-contrib/cors"
 
@@ -32,8 +33,9 @@ func main() {
 		AllowCredentials: true,
 	}))
 
-	getRouter.GET_Routes(router)
 	authRouter.AUTH_Routes(router)
+	getRouter.GET_Routes(router)
+	postRouter.POST_Routes(router)
 
 	port := os.Getenv("PORT")
 	if port == "" {

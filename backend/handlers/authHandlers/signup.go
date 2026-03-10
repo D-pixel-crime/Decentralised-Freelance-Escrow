@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
@@ -15,9 +16,8 @@ import (
 )
 
 type SignupRequest struct {
-	Username string `json:"username" binding:"required"`
-	Email    string `json:"email" binding:"required"`
-	// Password   string `json:"password" binding:"required"`
+	Username   string `json:"username" binding:"required"`
+	Email      string `json:"email" binding:"required"`
 	Role       string `json:"role" binding:"required"`
 	EthAccount string `json:"ethAccount" binding:"required"`
 }
@@ -53,8 +53,8 @@ func Signup(c *gin.Context) {
 	var reqBody SignupRequest
 
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
-		log.Println("Validation Error:", err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Println("Request Format Error:", err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect Request Format!"})
 		return
 	}
 
@@ -77,8 +77,8 @@ func Signup(c *gin.Context) {
 	}
 
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("accessToken", accessToken, 3600*24, "/", "localhost", false, true)
-	c.SetCookie("refreshToken", refreshToken, 3600*24*7, "/", "localhost", false, true)
+	c.SetCookie("accessToken", accessToken, int(time.Hour*24), "/", "localhost", false, true)
+	c.SetCookie("refreshToken", refreshToken, int(time.Hour*24*7), "/", "localhost", false, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Signup Successful.",
