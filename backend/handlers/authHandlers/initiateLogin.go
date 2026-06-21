@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
@@ -23,7 +24,6 @@ func checkUserAndProduceNonce(ethAccount, role string) (string, error) {
 	filter := bson.M{"ethAccount": ethAccount}
 	// Creating nonce
 	nonce := siwe.GenerateNonce()
-	update := bson.M{"$set": bson.M{"nonce": nonce}}
 
 	var err error
 
@@ -31,11 +31,11 @@ func checkUserAndProduceNonce(ethAccount, role string) (string, error) {
 	case "client":
 		var res models.Client
 		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
-		err = coll.FindOneAndUpdate(context.TODO(), filter, update).Decode(&res)
+		err = coll.FindOne(context.TODO(), filter).Decode(&res)
 	case "freelancer":
 		var res models.Freelancer
 		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
-		err = coll.FindOneAndUpdate(context.TODO(), filter, update).Decode(&res)
+		err = coll.FindOne(context.TODO(), filter).Decode(&res)
 	default:
 		return "", fmt.Errorf("Invalid User Type!")
 	}
@@ -45,6 +45,11 @@ func checkUserAndProduceNonce(ethAccount, role string) (string, error) {
 			return "", err
 		}
 		return "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
+	}
+
+	err = utils.RedisClient.Set(context.TODO(), "nonce:"+ethAccount, nonce, 5*time.Minute).Err()
+	if err != nil {
+		return "", fmt.Errorf("Error Setting Nonce in Redis! Error:%s", err)
 	}
 
 	return nonce, nil

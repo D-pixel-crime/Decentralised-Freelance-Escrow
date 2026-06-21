@@ -23,7 +23,7 @@ type LoginVerificationRequest struct {
 	Signature  string `json:"signature" binding:"required"`
 }
 
-func signatureVerification(ethAccount, message, signature, nonce string, update, filter bson.M, coll *mongo.Collection) error {
+func signatureVerification(ethAccount, message, signature, nonce string) error {
 	siweMesssage, err := siwe.ParseMessage(message)
 	if err != nil {
 		return fmt.Errorf("Error Parsing SIWE Message! Error:%s", err)
@@ -38,17 +38,14 @@ func signatureVerification(ethAccount, message, signature, nonce string, update,
 		return fmt.Errorf("Signing Address Doesn't Match the Account Address! Error:%s", err)
 	}
 
-	_, _ = coll.UpdateOne(context.TODO(), filter, update)
-
 	return nil
 }
 
 func verifyUser(ethAccount, role, message, signature string) (string, string, error) {
 	filter := bson.M{"ethAccount": ethAccount}
-	update := bson.M{"$set": bson.M{"nonce": ""}}
 
 	var err error
-	var username, email, nonce string
+	var username, email string
 	var coll *mongo.Collection
 
 	switch role {
@@ -65,7 +62,6 @@ func verifyUser(ethAccount, role, message, signature string) (string, string, er
 
 		username = res.Username
 		email = res.Email
-		nonce = res.Nonce
 	case "freelancer":
 		var res models.Freelancer
 		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
@@ -79,12 +75,17 @@ func verifyUser(ethAccount, role, message, signature string) (string, string, er
 
 		username = res.Username
 		email = res.Email
-		nonce = res.Nonce
 	default:
 		return "", "", fmt.Errorf("Invalid User Type!")
 	}
 
-	if err = signatureVerification(ethAccount, message, signature, nonce, update, filter, coll); err != nil {
+	nonce, err := utils.RedisClient.Get(context.TODO(), "nonce:"+ethAccount).Result()
+	if err != nil {
+		return "", "", fmt.Errorf("Error getting nonce from Redis (may be expired)! Error:%s", err)
+	}
+	utils.RedisClient.Del(context.TODO(), "nonce:"+ethAccount)
+
+	if err = signatureVerification(ethAccount, message, signature, nonce); err != nil {
 		return "", "", err
 	}
 	return username, email, nil

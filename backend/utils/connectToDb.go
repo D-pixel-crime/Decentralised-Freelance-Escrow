@@ -57,7 +57,7 @@ func ConnectToDb() (*mongo.Client, error) {
 
 	err = createUserIndexes()
 	if err != nil {
-		log.Fatalf("Error creating Database Indexes!")
+		log.Fatalf("Error creating Database Indexes! Error:%s", err)
 		return DBClient, err
 	}
 
