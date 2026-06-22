@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/D-pixel-crime/Freelance_Escrow/backend/indexer"
 	authRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/authRouters"
 	getRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/getRouters"
 	postRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/postRouters"
@@ -22,6 +23,13 @@ func main() {
 	_, err = utils.ConnectToRedis()
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	_, err = utils.ConnectToWeb3()
+	if err != nil {
+		log.Errorf("Failed to connect to Web3: %v", err)
+	} else {
+		go indexer.StartIndexer()
 	}
 
 	router := gin.Default()
