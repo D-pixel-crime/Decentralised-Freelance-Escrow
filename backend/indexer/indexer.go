@@ -2,29 +2,54 @@ package indexer
 
 import (
 	"context"
-	"time"
+	"os"
 
+	"github.com/D-pixel-crime/Freelance_Escrow/backend/contracts/escrow"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/charmbracelet/log"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 func StartIndexer() {
-	log.Infof("Indexer started. Waiting for blocks...")
+	log.Infof("Indexer started. Waiting for blocks & events...")
 
-	// Simple polling loop to print latest block number
-	ticker := time.NewTicker(5 * time.Second)
-	defer ticker.Stop()
+	if utils.Web3Client == nil {
+		log.Errorf("Web3Client is nil, indexer cannot proceed.")
+		return
+	}
 
-	for range ticker.C {
-		if utils.Web3Client == nil {
-			log.Errorf("Web3Client is nil, indexer cannot proceed.")
+	contractAddressHex := os.Getenv("ESCROW_CONTRACT_ADDRESS")
+	if contractAddressHex == "" {
+		log.Errorf("ESCROW_CONTRACT_ADDRESS not set, indexer exiting.")
+		return
+	}
+
+	contractAddress := common.HexToAddress(contractAddressHex)
+	escrowInstance, err := escrow.NewFreelanceEscrow(contractAddress, utils.Web3Client)
+	if err != nil {
+		log.Errorf("Failed to instantiate FreelanceEscrow contract: %v", err)
+		return
+	}
+
+	sink := make(chan *escrow.FreelanceEscrowFreelanceEscrowAggreementCreated)
+	sub, err := escrowInstance.WatchFreelanceEscrowAggreementCreated(&bind.WatchOpts{Context: context.Background()}, sink, nil, nil)
+	if err != nil {
+		log.Errorf("Failed to subscribe to AggreementCreated event: %v", err)
+		return
+	}
+	defer sub.Unsubscribe()
+
+	log.Infof("Successfully subscribed to FreelanceEscrow events at %s", contractAddressHex)
+
+	for {
+		select {
+		case err := <-sub.Err():
+			log.Errorf("Event subscription error: %v", err)
 			return
+		case event := <-sink:
+			log.Infof("Detected AggreementCreated! Client: %s, Freelancer: %s", event.Client.Hex(), event.Freelancer.Hex())
+			log.Infof("Attempting to update MongoDB for Job/Escrow ID (Pending structured query...)")
 		}
-		blockNumber, err := utils.Web3Client.BlockNumber(context.Background())
-		if err != nil {
-			log.Errorf("Failed to retrieve latest block: %v", err)
-			continue
-		}
-		log.Infof("Indexer: Successfully connected. Latest block number: %d", blockNumber)
 	}
 }
