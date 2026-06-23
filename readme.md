@@ -11,9 +11,6 @@ At its core, the platform eliminates the need for a centralized middleman to hol
 3. **Settlement:** Once the client approves the deliverables, the smart contract automatically releases the locked funds directly to the freelancer's wallet. 
 4. **Dispute Resolution:** If a conflict arises, a decentralized or multi-party arbitration layer is triggered, halting the funds until evidence is evaluated and a fair resolution is executed programmatically.
 
-### Visual Identity & Theme:
-To counter the psychological anxiety of users locking up substantial funds, the platform rejects playful web aesthetics in favor of an **"Institutional-Grade DeFi / Digital Vault"** theme. Inspired by the ChainFund layout, it utilizes a sleek, dark navy palette with a sharp, vibrant blue central spotlight, clean geometric typography, and high-contrast status states to project ultimate precision, safety, and security.
-
 ---
 
 ## 2. Total Tech Stack (Current & Planned)
