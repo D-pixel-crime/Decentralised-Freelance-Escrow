@@ -29,7 +29,8 @@ func main() {
 	if err != nil {
 		log.Errorf("Failed to connect to Web3: %v", err)
 	} else {
-		go indexer.StartIndexer()
+		jobsColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
+		go indexer.StartIndexer(jobsColl)
 	}
 
 	router := gin.Default()
