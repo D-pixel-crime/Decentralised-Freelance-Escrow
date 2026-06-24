@@ -32,10 +32,10 @@ func StartIndexer() {
 		return
 	}
 
-	sink := make(chan *escrow.FreelanceEscrowFreelanceEscrowAggreementCreated)
-	sub, err := escrowInstance.WatchFreelanceEscrowAggreementCreated(&bind.WatchOpts{Context: context.Background()}, sink, nil, nil)
+	sink := make(chan *escrow.FreelanceEscrowFreelanceEscrowClientStakeCompleted)
+	sub, err := escrowInstance.WatchFreelanceEscrowClientStakeCompleted(&bind.WatchOpts{Context: context.Background()}, sink, nil, nil)
 	if err != nil {
-		log.Errorf("Failed to subscribe to AggreementCreated event: %v", err)
+		log.Errorf("Failed to subscribe to ClientStakeCompleted event: %v", err)
 		return
 	}
 	defer sub.Unsubscribe()
@@ -48,7 +48,7 @@ func StartIndexer() {
 			log.Errorf("Event subscription error: %v", err)
 			return
 		case event := <-sink:
-			log.Infof("Detected AggreementCreated! Client: %s, Freelancer: %s", event.Client.Hex(), event.Freelancer.Hex())
+			log.Infof("Detected ClientStakeCompleted! Amount: %s, Timestamp: %s", event.Amount.String(), event.Timestamp.String())
 			log.Infof("Attempting to update MongoDB for Job/Escrow ID (Pending structured query...)")
 		}
 	}
