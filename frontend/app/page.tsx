@@ -1,63 +1,193 @@
-import Image from "next/image";
+"use client";
+
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(145deg, #0a0e1a 0%, #0d1525 40%, #111b2e 100%)",
+        fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Subtle grid overlay */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          backgroundImage:
+            "linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px)",
+          backgroundSize: "64px 64px",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Glow orb */}
+      <div
+        style={{
+          position: "absolute",
+          top: "20%",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "500px",
+          height: "500px",
+          background: "radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%)",
+          borderRadius: "50%",
+          pointerEvents: "none",
+        }}
+      />
+
+      <main
+        style={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: "2.5rem",
+          padding: "2rem",
+        }}
+      >
+        {/* Logo / Brand */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              borderRadius: "10px",
+              background: "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 0 24px rgba(59, 130, 246, 0.3)",
+            }}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="white"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <span
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: 600,
+              color: "#e2e8f0",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Freelance Escrow
+          </span>
+        </div>
+
+        {/* Heading */}
+        <div style={{ textAlign: "center", maxWidth: "560px" }}>
+          <h1
+            style={{
+              fontSize: "clamp(2rem, 5vw, 3rem)",
+              fontWeight: 700,
+              lineHeight: 1.15,
+              color: "#f1f5f9",
+              letterSpacing: "-0.03em",
+              margin: 0,
+            }}
+          >
+            Decentralised
+            <br />
+            <span
+              style={{
+                background: "linear-gradient(90deg, #3B82F6, #60A5FA)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              Digital Vault
+            </span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p
+            style={{
+              marginTop: "1rem",
+              fontSize: "1.05rem",
+              lineHeight: 1.7,
+              color: "#94a3b8",
+            }}
+          >
+            Trustless escrow for freelance agreements. Stake, deliver, and
+            settle — enforced entirely on-chain.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        {/* Connect Button */}
+        <div
+          style={{
+            padding: "1.5rem 2rem",
+            borderRadius: "16px",
+            border: "1px solid rgba(59, 130, 246, 0.15)",
+            background: "rgba(15, 23, 42, 0.6)",
+            backdropFilter: "blur(12px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "1rem",
+            boxShadow: "0 4px 32px rgba(0, 0, 0, 0.3)",
+          }}
+        >
+          <span
+            style={{
+              fontSize: "0.8rem",
+              fontWeight: 500,
+              color: "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Connect to Anvil
+          </span>
+          <ConnectButton />
+        </div>
+
+        {/* Footer status */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            marginTop: "1rem",
+          }}
+        >
+          <div
+            style={{
+              width: "6px",
+              height: "6px",
+              borderRadius: "50%",
+              backgroundColor: "#22c55e",
+              boxShadow: "0 0 6px #22c55e",
+            }}
+          />
+          <span style={{ fontSize: "0.75rem", color: "#64748b" }}>
+            Local Anvil Node · Chain ID 31337
+          </span>
         </div>
       </main>
     </div>

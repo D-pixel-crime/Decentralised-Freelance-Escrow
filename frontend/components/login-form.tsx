@@ -1,13 +1,5 @@
 'use client'
 
-declare global {
-    interface Window {
-        ethereum?: {
-            request: (args: { method: string }) => Promise<string[]>;
-        };
-    }
-}
-
 import {
     Select,
     SelectContent,
@@ -105,10 +97,10 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
     }
 
     return (
-        <Card {...props}>
+        <Card {...props} className="border-blue-500/15 bg-[#0f172a]/80 backdrop-blur-xl shadow-2xl shadow-blue-500/5">
             <CardHeader className="flex-center w-full flex-col">
-                <CardTitle className="text-lg">Login to an existing account</CardTitle>
-                <CardDescription className="text-center">
+                <CardTitle className="text-lg text-slate-100">Login to an existing account</CardTitle>
+                <CardDescription className="text-center text-slate-400">
                     Enter your credentials below to login into your account
                 </CardDescription>
             </CardHeader>
@@ -133,15 +125,15 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
                         <Field>
                             <FieldLabel htmlFor="ethAccount">Ethereum Wallet Address<span className="text-destructive">*</span></FieldLabel>
                             <div className="flex flex-row justify-between items-center gap-2">
-                                <Input id="ethAccount" value={walletAddr} type="text" placeholder="0xxxxxxxxxxxxxxxxxx......" disabled className="disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed" />
-                                <Button type="button" className="cursor-pointer" onClick={connectToWallet}>Connect Wallet</Button>
+                                <Input id="ethAccount" value={walletAddr} type="text" placeholder="0xxxxxxxxxxxxxxxxxx......" disabled className="disabled:bg-slate-800/50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:border-slate-700/50" />
+                                <Button type="button" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white" onClick={connectToWallet}>Connect Wallet</Button>
                             </div>
                         </Field>
                         <FieldGroup>
                             <Field>
-                                <Button type="submit" className="cursor-pointer bg-green-600 hover:bg-green-500">Login</Button>
-                                <FieldDescription className="px-6 text-center">
-                                    Don&apos;t have an account? <Link href="/signup">Sign-up</Link>
+                                <Button type="submit" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white w-full">Login</Button>
+                                <FieldDescription className="px-6 text-center text-slate-500">
+                                    Don&apos;t have an account? <Link href="/signup" className="text-blue-400 hover:text-blue-300 transition-colors">Sign-up</Link>
                                 </FieldDescription>
                             </Field>
                         </FieldGroup>
