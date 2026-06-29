@@ -57,7 +57,7 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
       alert("Please Connect your Ethereum Wallet!");
       return;
     }
-    const backendUri = process.env.NEXT_PUBLIC_BACKEND_URI;
+    const backendUri = process.env.NEXT_PUBLIC_API_URL;
     if (!backendUri) {
       alert("Backend URI Missing!");
       return;
@@ -66,7 +66,7 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
     console.log(walletAddr);
 
     try {
-      await axios.post(`${backendUri}/auth/signup`, { ...details, ethAccount: walletAddr });
+      await axios.post(`${backendUri}/auth/signup`, { ...details, ethAccount: walletAddr }, { withCredentials: true });
 
       const cookieSettings = `; path=/; max-age=${3600 * 24}; SameSite=Lax`; // 7 days
       document.cookie = `username=${details.username}${cookieSettings}`;

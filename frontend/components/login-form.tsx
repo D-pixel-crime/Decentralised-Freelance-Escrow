@@ -60,7 +60,7 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
                 return;
             }
 
-            const nonce = (await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URI}/auth/login/initiate`, { role, ethAccount: walletAddr })).data.nonce
+            const nonce = (await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login/initiate`, { role, ethAccount: walletAddr }, { withCredentials: true })).data.nonce
             const provider = new BrowserProvider(window.ethereum)
 
             const message = new SiweMessage({
@@ -76,7 +76,7 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
             const signer = await provider.getSigner()
             const signature = await signer.signMessage(message);
 
-            const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URI}/auth/login/verify`, { ethAccount: walletAddr, role, message, signature }, { withCredentials: true })
+            const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login/verify`, { ethAccount: walletAddr, role, message, signature }, { withCredentials: true })
             const { username, email } = response.data;
 
             const cookieSettings = `; path=/; max-age=${3600 * 24}; SameSite=Lax`; // 7 days

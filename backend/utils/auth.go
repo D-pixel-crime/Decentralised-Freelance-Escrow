@@ -49,13 +49,22 @@ func GenerateTokens(username, email, role, ethAccount string) (string, string, e
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization Header Required!"})
-			return
+		var tokenString string
+
+		// Attempt to read the access token from the cookie first
+		cookie, err := c.Cookie("accessToken")
+		if err == nil && cookie != "" {
+			tokenString = cookie
+		} else {
+			// Fallback to the Authorization header
+			authHeader := c.GetHeader("Authorization")
+			if authHeader == "" {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization Header or Cookie Required!"})
+				return
+			}
+			tokenString = strings.TrimPrefix(authHeader, "Bearer ")
 		}
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (any, error) {
 			return []byte(os.Getenv("JWT_SECRET")), nil
 		})
