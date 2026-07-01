@@ -42,4 +42,11 @@ type Job struct {
 	ClientID        bson.ObjectID `bson:"clientId" json:"clientId"`
 	FreelancerID    bson.ObjectID `bson:"freelancerId" json:"freelancerId"`
 	Status          JobStatus     `bson:"status" json:"status"`
+
+	// ── Web2 metadata (off-chain, MongoDB-only) ──
+	Title        string `bson:"title,omitempty" json:"title"`
+	Description  string `bson:"description,omitempty" json:"description"`
+	Deadline     string `bson:"deadline,omitempty" json:"deadline"`
+	ContactEmail string `bson:"contactEmail,omitempty" json:"contactEmail"`
+	PayRange     string `bson:"payRange,omitempty" json:"payRange"`
 }

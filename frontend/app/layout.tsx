@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import Web3Provider from "./providers/Web3Provider";
 
@@ -19,15 +20,30 @@ export const metadata: Metadata = {
     "Institutional-grade decentralised escrow for freelance agreements, powered by smart contracts.",
 };
 
-export default function RootLayout({
+function getThemeClass(role: string | undefined): string {
+  switch (role) {
+    case "client":
+      return "theme-client";
+    case "freelancer":
+      return "theme-freelancer";
+    default:
+      return "";
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const role = cookieStore.get("role")?.value;
+  const themeClass = getThemeClass(role);
+
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased ${themeClass}`}
       >
         <Web3Provider>{children}</Web3Provider>
       </body>

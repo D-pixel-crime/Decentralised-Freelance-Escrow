@@ -2,14 +2,15 @@ package indexer
 
 import (
 	"context"
-	"os"
 	"time"
 
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/contracts/escrow"
+	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/charmbracelet/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -22,16 +23,37 @@ func StartIndexer(jobsColl *mongo.Collection) {
 		return
 	}
 
-	contractAddressHex := os.Getenv("ESCROW_CONTRACT_ADDRESS")
-	if contractAddressHex == "" {
-		log.Errorf("ESCROW_CONTRACT_ADDRESS not set, indexer exiting.")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	filter := bson.M{"contractAddress": bson.M{"$ne": "", "$exists": true}}
+	cursor, err := jobsColl.Find(ctx, filter)
+	if err != nil {
+		log.Errorf("Failed to query jobs for hydration: %v", err)
+		return
+	}
+	defer cursor.Close(ctx)
+
+	var jobs []models.Job
+	if err := cursor.All(ctx, &jobs); err != nil {
+		log.Errorf("Failed to decode jobs for hydration: %v", err)
 		return
 	}
 
+	for _, job := range jobs {
+		log.Infof("Hydrating indexer for job contract: %s", job.ContractAddress)
+		WatchContract(utils.Web3Client, job.ContractAddress, jobsColl)
+	}
+
+	// Block main indexer goroutine to keep listeners alive
+	select {}
+}
+
+func WatchContract(client *ethclient.Client, contractAddressHex string, jobsColl *mongo.Collection) {
 	contractAddress := common.HexToAddress(contractAddressHex)
-	escrowInstance, err := escrow.NewFreelanceEscrow(contractAddress, utils.Web3Client)
+	escrowInstance, err := escrow.NewFreelanceEscrow(contractAddress, client)
 	if err != nil {
-		log.Errorf("Failed to instantiate FreelanceEscrow contract: %v", err)
+		log.Errorf("Failed to instantiate FreelanceEscrow contract for %s: %v", contractAddressHex, err)
 		return
 	}
 
@@ -47,9 +69,6 @@ func StartIndexer(jobsColl *mongo.Collection) {
 	go watchRandomDisputeRaised(jobsColl, escrowInstance, contractAddressHex)
 	go watchPaymentDisputeRaised(jobsColl, escrowInstance, contractAddressHex)
 	go watchDisputeResolved(jobsColl, escrowInstance, contractAddressHex)
-
-	// Block main indexer goroutine to keep listeners alive
-	select {}
 }
 
 func watchClientStakeCompleted(jobsColl *mongo.Collection, escrowInstance *escrow.FreelanceEscrow, contractAddressHex string) {

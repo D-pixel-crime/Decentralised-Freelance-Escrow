@@ -1,6 +1,28 @@
 "use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import Link from "next/link";
+import { Lock, Zap, Scale, ArrowRight } from "lucide-react";
+
+const features = [
+  {
+    icon: Lock,
+    title: "Trustless Escrow",
+    description:
+      "Funds are locked in an on-chain smart contract. Neither party can withdraw unilaterally — trust the code, not the counterparty.",
+  },
+  {
+    icon: Zap,
+    title: "Instant Settlement",
+    description:
+      "Once both parties confirm completion, payment is released automatically. No middlemen, no delays, no processing fees.",
+  },
+  {
+    icon: Scale,
+    title: "Fair Arbitration",
+    description:
+      "Disputes are resolved on-chain with transparent evidence. Randomised arbitration ensures unbiased, tamper-proof outcomes.",
+  },
+];
 
 export default function Home() {
   return (
@@ -33,11 +55,11 @@ export default function Home() {
       <div
         style={{
           position: "absolute",
-          top: "20%",
+          top: "15%",
           left: "50%",
           transform: "translateX(-50%)",
-          width: "500px",
-          height: "500px",
+          width: "600px",
+          height: "600px",
           background: "radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%)",
           borderRadius: "50%",
           pointerEvents: "none",
@@ -51,18 +73,14 @@ export default function Home() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: "2.5rem",
+          gap: "3rem",
           padding: "2rem",
+          maxWidth: "960px",
+          width: "100%",
         }}
       >
         {/* Logo / Brand */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.75rem",
-          }}
-        >
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <div
             style={{
               width: "40px",
@@ -138,34 +156,111 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Connect Button */}
+        {/* ── 3-Column Infographic ─────────────────────────────────── */}
         <div
           style={{
-            padding: "1.5rem 2rem",
-            borderRadius: "16px",
-            border: "1px solid rgba(59, 130, 246, 0.15)",
-            background: "rgba(15, 23, 42, 0.6)",
-            backdropFilter: "blur(12px)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: "1rem",
-            boxShadow: "0 4px 32px rgba(0, 0, 0, 0.3)",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "1.25rem",
+            width: "100%",
           }}
         >
-          <span
-            style={{
-              fontSize: "0.8rem",
-              fontWeight: 500,
-              color: "#64748b",
-              textTransform: "uppercase",
-              letterSpacing: "0.1em",
-            }}
-          >
-            Connect to Anvil
-          </span>
-          <ConnectButton />
+          {features.map(({ icon: Icon, title, description }) => (
+            <div
+              key={title}
+              style={{
+                padding: "1.5rem",
+                borderRadius: "16px",
+                border: "1px solid rgba(59, 130, 246, 0.12)",
+                background: "rgba(15, 23, 42, 0.5)",
+                backdropFilter: "blur(12px)",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.85rem",
+                transition: "border-color 0.3s, box-shadow 0.3s",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(59, 130, 246, 0.30)";
+                (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 32px rgba(59, 130, 246, 0.08)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(59, 130, 246, 0.12)";
+                (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+              }}
+            >
+              <div
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "10px",
+                  background: "rgba(59, 130, 246, 0.08)",
+                  border: "1px solid rgba(59, 130, 246, 0.15)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon
+                  style={{ width: "20px", height: "20px", color: "#60A5FA" }}
+                  strokeWidth={1.8}
+                />
+              </div>
+              <h3
+                style={{
+                  fontSize: "0.95rem",
+                  fontWeight: 600,
+                  color: "#e2e8f0",
+                  margin: 0,
+                }}
+              >
+                {title}
+              </h3>
+              <p
+                style={{
+                  fontSize: "0.8rem",
+                  lineHeight: 1.65,
+                  color: "#64748b",
+                  margin: 0,
+                }}
+              >
+                {description}
+              </p>
+            </div>
+          ))}
         </div>
+
+        {/* ── Enter Vault CTA ──────────────────────────────────────── */}
+        <Link
+          href="/login"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "0.75rem 2rem",
+            borderRadius: "12px",
+            background: "linear-gradient(135deg, #3B82F6, #2563EB)",
+            color: "#ffffff",
+            fontSize: "0.9rem",
+            fontWeight: 600,
+            letterSpacing: "-0.01em",
+            textDecoration: "none",
+            boxShadow: "0 0 24px rgba(59, 130, 246, 0.25), 0 4px 16px rgba(0, 0, 0, 0.3)",
+            transition: "box-shadow 0.3s, transform 0.2s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow =
+              "0 0 36px rgba(59, 130, 246, 0.4), 0 6px 24px rgba(0, 0, 0, 0.4)";
+            (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow =
+              "0 0 24px rgba(59, 130, 246, 0.25), 0 4px 16px rgba(0, 0, 0, 0.3)";
+            (e.currentTarget as HTMLAnchorElement).style.transform = "translateY(0)";
+          }}
+        >
+          Enter Vault
+          <ArrowRight style={{ width: "16px", height: "16px" }} />
+        </Link>
 
         {/* Footer status */}
         <div
@@ -173,7 +268,6 @@ export default function Home() {
             display: "flex",
             alignItems: "center",
             gap: "0.5rem",
-            marginTop: "1rem",
           }}
         >
           <div

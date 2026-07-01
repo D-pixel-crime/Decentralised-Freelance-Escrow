@@ -11,4 +11,5 @@ func AUTH_Routes(authRouter *gin.Engine) {
 	groupedAuth.POST("/signup", authHandlers.Signup)
 	groupedAuth.POST("/login/initiate", authHandlers.InitiateLogin)
 	groupedAuth.POST("/login/verify", authHandlers.VerifyLogin)
+	groupedAuth.POST("/logout", authHandlers.Logout)
 }

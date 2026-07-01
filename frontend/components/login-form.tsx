@@ -30,29 +30,24 @@ import axios from "axios";
 import { SiweMessage } from "siwe";
 import { BrowserProvider, getAddress } from "ethers"
 import { useRouter } from "next/navigation";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 
 const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
-    const [walletAddr, setWalletAddr] = useState("");
     const [role, setRole] = useState("")
     const router = useRouter();
+    const { address, isConnected } = useAccount();
 
-    const connectToWallet = async () => {
-        if (typeof window.ethereum !== 'undefined') {
-            try {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                const ethAccount = getAddress(accounts[0]);
-                setWalletAddr(ethAccount);
-            } catch (error) {
-                alert("Error fetching wallet details! Please try again later.");
-                console.log(error);
-            }
-        } else {
-            alert("Please Install Metamask!");
-        }
-    }
+    // Derive the checksummed wallet address from Wagmi's connected account
+    const walletAddr = isConnected && address ? getAddress(address) : "";
 
     const handleLogin = async (e: React.SubmitEvent) => {
         e.preventDefault()
+
+        if (!walletAddr) {
+            alert("Please connect your wallet using the button above.");
+            return;
+        }
 
         try {
             if (!window.ethereum) {
@@ -79,21 +74,18 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
             const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/login/verify`, { ethAccount: walletAddr, role, message, signature }, { withCredentials: true })
             const { username, email } = response.data;
 
-            const cookieSettings = `; path=/; max-age=${3600 * 24}; SameSite=Lax`; // 7 days
+            const cookieSettings = `; path=/; max-age=${3600 * 24}; SameSite=Lax`; // 1 day
             document.cookie = `username=${username}${cookieSettings}`;
             document.cookie = `email=${email}${cookieSettings}`;
             document.cookie = `role=${role}${cookieSettings}`;
             document.cookie = `ethAccount=${walletAddr}${cookieSettings}`;
 
-            router.push("/");
+            router.push("/dashboard");
             router.refresh();
         } catch (error) {
             alert("Error while Login.\n" + error)
             return
         }
-
-        setWalletAddr("");
-        setRole("")
     }
 
     return (
@@ -101,7 +93,7 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
             <CardHeader className="flex-center w-full flex-col">
                 <CardTitle className="text-lg text-slate-100">Login to an existing account</CardTitle>
                 <CardDescription className="text-center text-slate-400">
-                    Enter your credentials below to login into your account
+                    Connect your wallet and sign to verify ownership
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -123,15 +115,27 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
                             </Select>
                         </Field>
                         <Field>
-                            <FieldLabel htmlFor="ethAccount">Ethereum Wallet Address<span className="text-destructive">*</span></FieldLabel>
-                            <div className="flex flex-row justify-between items-center gap-2">
-                                <Input id="ethAccount" value={walletAddr} type="text" placeholder="0xxxxxxxxxxxxxxxxxx......" disabled className="disabled:bg-slate-800/50 disabled:text-slate-500 disabled:cursor-not-allowed disabled:border-slate-700/50" />
-                                <Button type="button" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white" onClick={connectToWallet}>Connect Wallet</Button>
+                            <FieldLabel htmlFor="ethAccount">Ethereum Wallet<span className="text-destructive">*</span></FieldLabel>
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center justify-center rounded-xl border border-slate-700/50 bg-slate-800/40 p-3">
+                                    <ConnectButton />
+                                </div>
+                                {walletAddr && (
+                                    <Input
+                                        id="ethAccount"
+                                        value={walletAddr}
+                                        type="text"
+                                        disabled
+                                        className="disabled:bg-slate-800/50 disabled:text-slate-400 disabled:cursor-not-allowed disabled:border-slate-700/50 font-mono text-xs"
+                                    />
+                                )}
                             </div>
                         </Field>
                         <FieldGroup>
                             <Field>
-                                <Button type="submit" className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white w-full">Login</Button>
+                                <Button type="submit" disabled={!isConnected} className="cursor-pointer bg-blue-600 hover:bg-blue-500 text-white w-full disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isConnected ? "Sign & Login" : "Connect Wallet First"}
+                                </Button>
                                 <FieldDescription className="px-6 text-center text-slate-500">
                                     Don&apos;t have an account? <Link href="/signup" className="text-blue-400 hover:text-blue-300 transition-colors">Sign-up</Link>
                                 </FieldDescription>

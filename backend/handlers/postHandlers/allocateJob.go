@@ -6,11 +6,13 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/contracts"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
+	"github.com/charmbracelet/log"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -22,7 +24,6 @@ import (
 
 type jobAllocationRequest struct {
 	FreelancerEthAccount string        `json:"freelancerEthAccount" binding:"required"`
-	ClientEthAccount     string        `json:"clientEthAccount" binding:"required"`
 	JobId                bson.ObjectID `json:"jobId" binding:"required"`
 	ChainId              int           `json:"chainId" binding:"required"`
 }
@@ -41,14 +42,30 @@ func checkFreelancer(freelancerEthAccount string) (bson.ObjectID, error) {
 }
 
 func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bson.ObjectID) (string, error) {
-	client, err := ethclient.Dial(os.Getenv("SEPOLIA_RPC_URL"))
-	if err != nil {
-		return "", fmt.Errorf("%s", "Error Connecting with Ethereum-Endpoint!"+err.Error())
+	rpcURL := os.Getenv("WEB3_RPC_URL")
+	if rpcURL == "" {
+		rpcURL = "http://127.0.0.1:8545"
 	}
 
-	contractOwner, err := crypto.HexToECDSA(os.Getenv("DEPLOYER_ACCOUNT"))
+	client, err := ethclient.Dial(rpcURL)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to connect to Ethereum RPC at %s: %v", rpcURL, err)
+	}
+
+	privKeyStr := os.Getenv("PRIVATE_KEY")
+	if privKeyStr == "" {
+		privKeyStr = os.Getenv("DEPLOYER_ACCOUNT")
+	}
+	if privKeyStr == "" {
+		// Hardcoded fallback: Anvil Account 0 private key for local development
+		privKeyStr = "ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
+		log.Warnf("PRIVATE_KEY env var is empty — using hardcoded Anvil Account 0 fallback")
+	}
+	privKeyStr = strings.TrimPrefix(privKeyStr, "0x")
+
+	contractOwner, err := crypto.HexToECDSA(privKeyStr)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse private key: %v", err)
 	}
 
 	chainId, err := client.ChainID(context.Background())
@@ -58,7 +75,7 @@ func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bs
 
 	authenticatedTransactor, err := bind.NewKeyedTransactorWithChainID(contractOwner, chainId)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Failed to create transactor: %v", err)
 	}
 
 	jobId := new(big.Int).SetBytes(mongoJobId[:])
@@ -94,6 +111,25 @@ func updateJob(freelancerEthAccount, contractAddr string, jobId bson.ObjectID) e
 	return nil
 }
 
+func getClientEthAccount(jobId bson.ObjectID) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var job models.Job
+	jobsColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
+	if err := jobsColl.FindOne(ctx, bson.M{"_id": jobId}).Decode(&job); err != nil {
+		return "", err
+	}
+
+	var client models.Client
+	clientColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
+	if err := clientColl.FindOne(ctx, bson.M{"_id": job.ClientID}).Decode(&client); err != nil {
+		return "", err
+	}
+
+	return client.EthAccount, nil
+}
+
 func AllocateJob(c *gin.Context) {
 	var reqBody jobAllocationRequest
 	var err error
@@ -103,7 +139,17 @@ func AllocateJob(c *gin.Context) {
 		return
 	}
 
-	contractAddr, err := deployContract(reqBody.FreelancerEthAccount, reqBody.ClientEthAccount, reqBody.JobId)
+	clientEthAccount, err := getClientEthAccount(reqBody.JobId)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Job or Client Not Found!"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error! " + err.Error()})
+		}
+		return
+	}
+
+	contractAddr, err := deployContract(reqBody.FreelancerEthAccount, clientEthAccount, reqBody.JobId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!" + err.Error()})
 		return
@@ -119,5 +165,6 @@ func AllocateJob(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Job Allocated!"})
+	log.Infof("Job %s allocated → Contract deployed at %s and saved to MongoDB", reqBody.JobId.Hex(), contractAddr)
+	c.JSON(http.StatusOK, gin.H{"message": "Job Allocated!", "contractAddress": contractAddr})
 }

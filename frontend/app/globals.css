@@ -51,6 +51,18 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+
+  /* ── Vault theme tokens (consumed by components) ─────────── */
+  --color-vault-bg-start: var(--vault-bg-start);
+  --color-vault-bg-mid: var(--vault-bg-mid);
+  --color-vault-bg-end: var(--vault-bg-end);
+  --color-vault-accent: var(--vault-accent);
+  --color-vault-accent-soft: var(--vault-accent-soft);
+  --color-vault-accent-glow: var(--vault-accent-glow);
+  --color-vault-grid: var(--vault-grid);
+  --color-vault-nav-border: var(--vault-nav-border);
+  --color-vault-card-border: var(--vault-card-border);
+  --color-vault-card-hover: var(--vault-card-hover);
 }
 
 :root {
@@ -120,6 +132,52 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.552 0.016 285.938);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VAULT THEMES — Role-based colour systems applied server-side via <body>
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Default: Deep Navy / Blue (unauthenticated & fallback) ──────────── */
+body {
+  --vault-bg-start:    #0a0e1a;
+  --vault-bg-mid:      #0d1525;
+  --vault-bg-end:      #111b2e;
+  --vault-accent:      59, 130, 246;     /* rgb blue-500 */
+  --vault-accent-soft: rgba(59, 130, 246, 0.10);
+  --vault-accent-glow: rgba(59, 130, 246, 0.25);
+  --vault-grid:        rgba(59, 130, 246, 0.025);
+  --vault-nav-border:  rgba(59, 130, 246, 0.10);
+  --vault-card-border: rgba(59, 130, 246, 0.10);
+  --vault-card-hover:  rgba(59, 130, 246, 0.06);
+}
+
+/* ── Client Theme: Rich Indigo / Violet / Gold ───────────────────────── */
+body.theme-client {
+  --vault-bg-start:    #0b0a1a;
+  --vault-bg-mid:      #100e25;
+  --vault-bg-end:      #15112e;
+  --vault-accent:      129, 100, 240;    /* rgb violet-ish */
+  --vault-accent-soft: rgba(129, 100, 240, 0.10);
+  --vault-accent-glow: rgba(129, 100, 240, 0.25);
+  --vault-grid:        rgba(129, 100, 240, 0.025);
+  --vault-nav-border:  rgba(129, 100, 240, 0.10);
+  --vault-card-border: rgba(129, 100, 240, 0.10);
+  --vault-card-hover:  rgba(129, 100, 240, 0.06);
+}
+
+/* ── Freelancer Theme: Deep Dark Green / Emerald / Teal ──────────────── */
+body.theme-freelancer {
+  --vault-bg-start:    #060e0a;
+  --vault-bg-mid:      #091510;
+  --vault-bg-end:      #0e1b15;
+  --vault-accent:      16, 185, 129;     /* rgb emerald-500 */
+  --vault-accent-soft: rgba(16, 185, 129, 0.10);
+  --vault-accent-glow: rgba(16, 185, 129, 0.25);
+  --vault-grid:        rgba(16, 185, 129, 0.025);
+  --vault-nav-border:  rgba(16, 185, 129, 0.10);
+  --vault-card-border: rgba(16, 185, 129, 0.10);
+  --vault-card-hover:  rgba(16, 185, 129, 0.06);
 }
 
 @layer base {

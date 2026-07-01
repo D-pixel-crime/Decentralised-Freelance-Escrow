@@ -15,6 +15,13 @@ import (
 type jobCreationRequest struct {
 	ClientEthAccount string        `json:"clientEthAccount" binding:"required"`
 	JobId            bson.ObjectID `json:"jobId" binding:"required"`
+
+	// ── Web2 metadata ──
+	Title        string `json:"title" binding:"required"`
+	Description  string `json:"description"`
+	Deadline     string `json:"deadline"`
+	ContactEmail string `json:"contactEmail"`
+	PayRange     string `json:"payRange"`
 }
 
 func checkClient(clientEthAccount string) (bson.ObjectID, error) {
@@ -30,14 +37,22 @@ func checkClient(clientEthAccount string) (bson.ObjectID, error) {
 	return res.ID, nil
 }
 
-func jobCreation(clientEthAccount string) error {
-	clientId, err := checkClient(clientEthAccount)
+func jobCreation(req jobCreationRequest) error {
+	clientId, err := checkClient(req.ClientEthAccount)
 	if err != nil {
 		return err
 	}
 
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
-	doc := models.Job{ClientID: clientId, Status: models.UNALLOCATED}
+	doc := models.Job{
+		ClientID:     clientId,
+		Status:       models.UNALLOCATED,
+		Title:        req.Title,
+		Description:  req.Description,
+		Deadline:     req.Deadline,
+		ContactEmail: req.ContactEmail,
+		PayRange:     req.PayRange,
+	}
 
 	_, err = coll.InsertOne(context.Background(), doc)
 	if err != nil {
@@ -56,7 +71,7 @@ func CreateJob(c *gin.Context) {
 		return
 	}
 
-	err = jobCreation(reqBody.ClientEthAccount)
+	err = jobCreation(reqBody)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User Not Found!"})
@@ -68,3 +83,4 @@ func CreateJob(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Job Created!"})
 }
+

@@ -3,7 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/D-pixel-crime/Freelance_Escrow/backend/indexer"
+	// Indexer disabled — JIT sync in GetMyJobs replaces push-based WebSocket listeners
+	// "github.com/D-pixel-crime/Freelance_Escrow/backend/indexer"
 	authRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/authRouters"
 	getRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/getRouters"
 	postRouter "github.com/D-pixel-crime/Freelance_Escrow/backend/routers/postRouters"
@@ -28,10 +29,9 @@ func main() {
 	_, err = utils.ConnectToWeb3()
 	if err != nil {
 		log.Errorf("Failed to connect to Web3: %v", err)
-	} else {
-		jobsColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
-		go indexer.StartIndexer(jobsColl)
 	}
+	// Phase 11.2: Old push-based indexer disabled.
+	// On-chain state is now reconciled JIT (Just-In-Time) inside the GetMyJobs handler.
 
 	router := gin.Default()
 
