@@ -17,11 +17,12 @@ type jobCreationRequest struct {
 	JobId            bson.ObjectID `json:"jobId" binding:"required"`
 
 	// ── Web2 metadata ──
-	Title        string `json:"title" binding:"required"`
-	Description  string `json:"description"`
-	Deadline     string `json:"deadline"`
-	ContactEmail string `json:"contactEmail"`
-	PayRange     string `json:"payRange"`
+	Title        string  `json:"title" binding:"required"`
+	Description  string  `json:"description"`
+	Deadline     string  `json:"deadline"`
+	ContactEmail string  `json:"contactEmail"`
+	PayMin       float64 `json:"payMin"`
+	PayMax       float64 `json:"payMax"`
 }
 
 func checkClient(clientEthAccount string) (bson.ObjectID, error) {
@@ -51,7 +52,8 @@ func jobCreation(req jobCreationRequest) error {
 		Description:  req.Description,
 		Deadline:     req.Deadline,
 		ContactEmail: req.ContactEmail,
-		PayRange:     req.PayRange,
+		PayMin:       req.PayMin,
+		PayMax:       req.PayMax,
 	}
 
 	_, err = coll.InsertOne(context.Background(), doc)

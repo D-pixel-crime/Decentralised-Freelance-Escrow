@@ -15,9 +15,21 @@ type Client struct {
 	RequestedJobs []bson.ObjectID `bson:"requestedJobs" json:"requestedJobs"`
 }
 
+type FreelancerProfile struct {
+	Bio            string   `bson:"bio" json:"bio"`
+	ResumeLink     string   `bson:"resumeLink" json:"resumeLink"`
+	Experience     string   `bson:"experience" json:"experience"`
+	Education      string   `bson:"education" json:"education"`
+	TechStack      []string `bson:"techStack" json:"techStack"`
+	GithubLink     string   `bson:"githubLink" json:"githubLink"`
+	LeetCodeLink   string   `bson:"leetcodeLink" json:"leetcodeLink"`
+	CodeforcesLink string   `bson:"codeforcesLink" json:"codeforcesLink"`
+}
+
 type Freelancer struct {
 	BaseUser   `bson:",inline"`
-	ActiveJobs []bson.ObjectID `bson:"activeJobs" json:"activeJobs"`
+	ActiveJobs []bson.ObjectID   `bson:"activeJobs" json:"activeJobs"`
+	Profile    FreelancerProfile `bson:"profile" json:"profile"`
 }
 
 type JobStatus string
@@ -42,11 +54,13 @@ type Job struct {
 	ClientID        bson.ObjectID `bson:"clientId" json:"clientId"`
 	FreelancerID    bson.ObjectID `bson:"freelancerId" json:"freelancerId"`
 	Status          JobStatus     `bson:"status" json:"status"`
+	Applicants      []string      `bson:"applicants,omitempty" json:"applicants"`
 
 	// ── Web2 metadata (off-chain, MongoDB-only) ──
-	Title        string `bson:"title,omitempty" json:"title"`
-	Description  string `bson:"description,omitempty" json:"description"`
-	Deadline     string `bson:"deadline,omitempty" json:"deadline"`
-	ContactEmail string `bson:"contactEmail,omitempty" json:"contactEmail"`
-	PayRange     string `bson:"payRange,omitempty" json:"payRange"`
+	Title        string  `bson:"title,omitempty" json:"title"`
+	Description  string  `bson:"description,omitempty" json:"description"`
+	Deadline     string  `bson:"deadline,omitempty" json:"deadline"`
+	ContactEmail string  `bson:"contactEmail,omitempty" json:"contactEmail"`
+	PayMin       float64 `bson:"payMin,omitempty" json:"payMin"`
+	PayMax       float64 `bson:"payMax,omitempty" json:"payMax"`
 }

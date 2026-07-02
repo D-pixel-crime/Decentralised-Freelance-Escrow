@@ -13,5 +13,7 @@ func POST_Routes(postRouter *gin.Engine) {
 	{
 		protectedRouter.POST("/job/create", posthandlers.CreateJob)
 		protectedRouter.POST("/job/allocate", posthandlers.AllocateJob)
+		protectedRouter.POST("/job/apply", posthandlers.ApplyJob)
+		protectedRouter.POST("/profile/update", posthandlers.UpdateProfile)
 	}
 }

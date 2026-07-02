@@ -14,6 +14,8 @@ import {
 import AppNavbar from "@/components/app-navbar";
 import { ObjectId } from "bson";
 import JobCardActions from "./components/JobCardActions";
+import FreelancerProfile from "./components/FreelancerProfile";
+import ApplicantReviewModal from "./components/ApplicantReviewModal";
 
 // ── Status badge styling ────────────────────────────────────────────────────
 
@@ -193,14 +195,16 @@ function CreateJobModal({
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [payRange, setPayRange] = useState("");
+  const [payMin, setPayMin] = useState<number | "">("");
+  const [payMax, setPayMax] = useState<number | "">("");
 
   const resetForm = () => {
     setTitle("");
     setDescription("");
     setDeadline("");
     setContactEmail("");
-    setPayRange("");
+    setPayMin("");
+    setPayMax("");
     setError(null);
     setSuccess(false);
   };
@@ -239,7 +243,8 @@ function CreateJobModal({
           description: description.trim(),
           deadline: deadline.trim(),
           contactEmail: contactEmail.trim(),
-          payRange: payRange.trim(),
+          payMin: Number(payMin),
+          payMax: Number(payMax),
         },
         { withCredentials: true }
       );
@@ -345,30 +350,49 @@ function CreateJobModal({
             />
           </div>
 
-          {/* Deadline & Pay Range — side by side */}
+          {/* Deadline */}
+          <div>
+            <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-400">
+              <Calendar className="h-3 w-3" />
+              Deadline
+            </label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-200 outline-none transition-colors focus:border-[rgba(var(--vault-accent),0.5)] focus:ring-1 focus:ring-[rgba(var(--vault-accent),0.25)] [color-scheme:dark]"
+            />
+          </div>
+
+          {/* Pay Range (Min/Max ETH) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-400">
-                <Calendar className="h-3 w-3" />
-                Deadline
+                <DollarSign className="h-3 w-3" />
+                Min ETH
               </label>
               <input
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-200 outline-none transition-colors focus:border-[rgba(var(--vault-accent),0.5)] focus:ring-1 focus:ring-[rgba(var(--vault-accent),0.25)] [color-scheme:dark]"
+                type="number"
+                step="0.01"
+                min="0"
+                value={payMin}
+                onChange={(e) => setPayMin(e.target.value ? Number(e.target.value) : "")}
+                placeholder="e.g. 1.5"
+                className="w-full rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-colors focus:border-[rgba(var(--vault-accent),0.5)] focus:ring-1 focus:ring-[rgba(var(--vault-accent),0.25)]"
               />
             </div>
             <div>
               <label className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-slate-400">
                 <DollarSign className="h-3 w-3" />
-                Pay Range
+                Max ETH
               </label>
               <input
-                type="text"
-                value={payRange}
-                onChange={(e) => setPayRange(e.target.value)}
-                placeholder="e.g. 2-5 ETH"
+                type="number"
+                step="0.01"
+                min="0"
+                value={payMax}
+                onChange={(e) => setPayMax(e.target.value ? Number(e.target.value) : "")}
+                placeholder="e.g. 3.0"
                 className="w-full rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-colors focus:border-[rgba(var(--vault-accent),0.5)] focus:ring-1 focus:ring-[rgba(var(--vault-accent),0.25)]"
               />
             </div>
@@ -448,8 +472,11 @@ function CreateJobModal({
 
 export default function DashboardPage() {
   const [role, setRole] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"jobs" | "profile">("jobs");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [busyCards, setBusyCards] = useState<Set<string>>(new Set());
+  const [reviewJob, setReviewJob] = useState<Job | null>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
   // Callback factory for per-card busy tracking
   const makeCardBusyCb = useCallback(
@@ -550,9 +577,39 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Create Job — Client only */}
-        {role === "client" && (
-          <div className="mb-8">
+        {/* Tab Navigation for Freelancers */}
+        {role === "freelancer" && (
+          <div className="mb-8 flex gap-2 border-b border-slate-800/60 pb-px">
+            <button
+              onClick={() => setActiveTab("jobs")}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "jobs"
+                  ? "border-b-2 border-[rgba(var(--vault-accent),1)] text-slate-100"
+                  : "border-b-2 border-transparent text-slate-400 hover:text-slate-300"
+              }`}
+            >
+              My Jobs
+            </button>
+            <button
+              onClick={() => setActiveTab("profile")}
+              className={`px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === "profile"
+                  ? "border-b-2 border-[rgba(var(--vault-accent),1)] text-slate-100"
+                  : "border-b-2 border-transparent text-slate-400 hover:text-slate-300"
+              }`}
+            >
+              My Profile
+            </button>
+          </div>
+        )}
+
+        {activeTab === "profile" && role === "freelancer" ? (
+          <FreelancerProfile />
+        ) : (
+          <>
+            {/* Create Job — Client only */}
+            {role === "client" && (
+              <div className="mb-8">
             <button
               onClick={() => setIsModalOpen(true)}
               className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200"
@@ -670,10 +727,10 @@ export default function DashboardPage() {
 
                 {/* Pay Range & Deadline pills */}
                 <div className="mb-4 flex flex-wrap gap-2">
-                  {job.payRange && (
+                  {(job.payMin !== undefined || job.payMax !== undefined) && (
                     <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
                       <DollarSign className="h-2.5 w-2.5" />
-                      {job.payRange}
+                      {job.payMin === job.payMax ? `${job.payMin} ETH` : `${job.payMin} - ${job.payMax} ETH`}
                     </span>
                   )}
                   {job.deadline && (
@@ -719,6 +776,25 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
+                {/* View Applicants Button - only for unallocated jobs for client */}
+                {role === "client" && job.status === "UNALLOCATED" && job.applicants && job.applicants.length > 0 && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => {
+                        setReviewJob(job);
+                        setIsReviewModalOpen(true);
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-[rgba(var(--vault-accent),0.9)]"
+                      style={{
+                        background: `rgba(var(--vault-accent), 0.8)`,
+                        boxShadow: `0 0 20px rgba(var(--vault-accent), 0.2)`,
+                      }}
+                    >
+                      View Applicants ({job.applicants.length})
+                    </button>
+                  </div>
+                )}
+
                 {/* Stake Button — conditional on role + status */}
                 {role && canStake(role, job.status) && (
                   <StakeButton
@@ -748,6 +824,16 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+          </>
+        )}
+        <ApplicantReviewModal
+          isOpen={isReviewModalOpen}
+          onClose={() => {
+            setIsReviewModalOpen(false);
+            setReviewJob(null);
+          }}
+          job={reviewJob}
+        />
       </main>
     </div>
   );

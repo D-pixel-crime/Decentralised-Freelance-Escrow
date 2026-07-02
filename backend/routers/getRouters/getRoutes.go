@@ -16,12 +16,15 @@ func GET_Routes(getRouter *gin.Engine) {
 
 	// Public routes
 	getRouter.GET("/api/get/jobs/open", gethandlers.GetOpenJobs)
+	getRouter.GET("/api/get/job/:id", gethandlers.GetJob)
 
 	protectedRouter := getRouter.Group("/api/get")
 	protectedRouter.Use(utils.AuthMiddleware())
 	{
 		protectedRouter.GET("/balance/:address", gethandlers.GetWalletBalance)
 		protectedRouter.GET("/jobs/me", gethandlers.GetMyJobs)
+		protectedRouter.GET("/profile", gethandlers.GetProfile)
+		protectedRouter.GET("/profile/:address", gethandlers.GetProfileByAddress)
 	}
 
 }

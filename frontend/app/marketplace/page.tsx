@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAccount } from "wagmi";
 import type { Job } from "@/types/job";
 import {
@@ -21,98 +22,6 @@ function getCookie(name: string): string | undefined {
   if (typeof document === "undefined") return undefined;
   const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : undefined;
-}
-
-// ── Accept Job button (Freelancer only, per-card isolated state) ─────────────
-
-function AcceptJobButton({ job }: { job: Job }) {
-  const { address } = useAccount();
-  const queryClient = useQueryClient();
-  const [isAccepting, setIsAccepting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-
-  const handleAcceptJob = async () => {
-    if (!address) {
-      setError("Wallet not connected.");
-      return;
-    }
-
-    setIsAccepting(true);
-    setError(null);
-
-    try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/post/job/allocate`,
-        {
-          freelancerEthAccount: address,
-          jobId: job.id,
-          chainId: 31337,
-        },
-        { withCredentials: true }
-      );
-
-      setSuccess(true);
-      await queryClient.invalidateQueries({ queryKey: ["openJobs"] });
-    } catch (err) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.error || err.message
-        : "Unknown error";
-      setError(msg);
-    } finally {
-      setIsAccepting(false);
-    }
-  };
-
-  if (success) {
-    return (
-      <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5">
-        <span className="h-2 w-2 rounded-full bg-emerald-400" />
-        <span className="text-xs font-medium text-emerald-400">
-          Job accepted! Contract deployed.
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4">
-      <button
-        onClick={handleAcceptJob}
-        disabled={isAccepting}
-        className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-50"
-        style={{
-          background: `rgba(var(--vault-accent), 0.85)`,
-          boxShadow: `0 0 20px rgba(var(--vault-accent), 0.20)`,
-        }}
-        onMouseEnter={(e) => {
-          if (!isAccepting) {
-            e.currentTarget.style.background = `rgba(var(--vault-accent), 1)`;
-            e.currentTarget.style.boxShadow = `0 0 28px rgba(var(--vault-accent), 0.3)`;
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = `rgba(var(--vault-accent), 0.85)`;
-          e.currentTarget.style.boxShadow = `0 0 20px rgba(var(--vault-accent), 0.20)`;
-        }}
-      >
-        {isAccepting ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Deploying Contract…
-          </>
-        ) : (
-          <>
-            <UserCheck className="h-4 w-4" />
-            Accept Job
-          </>
-        )}
-      </button>
-      {error && (
-        <p className="mt-2 text-xs text-red-400/80">{error}</p>
-      )}
-    </div>
-  );
 }
 
 // ── Marketplace page ────────────────────────────────────────────────────────
@@ -270,10 +179,10 @@ export default function MarketplacePage() {
 
                 {/* Pay Range & Deadline pills */}
                 <div className="mb-4 flex flex-wrap gap-2">
-                  {job.payRange && (
-                    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                      <DollarSign className="h-2.5 w-2.5" />
-                      {job.payRange}
+                  {(job.payMin !== undefined || job.payMax !== undefined) && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-400">
+                      <DollarSign className="h-3.5 w-3.5" />
+                      {job.payMin === job.payMax ? `${job.payMin} ETH` : `${job.payMin} - ${job.payMax} ETH`}
                     </span>
                   )}
                   {job.deadline && (
@@ -307,10 +216,18 @@ export default function MarketplacePage() {
                   </div>
                 </div>
 
-                {/* Accept Job — only for UNALLOCATED status */}
-                {job.status === "UNALLOCATED" && (
-                  <AcceptJobButton job={job} />
-                )}
+                <div className="mt-4">
+                  <Link
+                    href={`/marketplace/${job.id}`}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-all duration-200 hover:bg-slate-800"
+                    style={{
+                      background: `rgba(var(--vault-accent), 0.85)`,
+                      boxShadow: `0 0 20px rgba(var(--vault-accent), 0.20)`,
+                    }}
+                  >
+                    View Details
+                  </Link>
+                </div>
 
                 {/* Glow accent on hover */}
                 <div

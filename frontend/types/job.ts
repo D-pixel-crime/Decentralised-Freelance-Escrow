@@ -17,11 +17,13 @@ export interface Job {
   clientId: string;
   freelancerId: string;
   status: JobStatus;
+  applicants?: string[];
 
   // Web2 metadata (off-chain)
   title?: string;
   description?: string;
   deadline?: string;
   contactEmail?: string;
-  payRange?: string;
+  payMin?: number;
+  payMax?: number;
 }
