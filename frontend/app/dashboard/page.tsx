@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import AppNavbar from "@/components/app-navbar";
 import { ObjectId } from "bson";
+import JobCardActions from "./components/JobCardActions";
 
 // ── Status badge styling ────────────────────────────────────────────────────
 
@@ -71,15 +72,39 @@ function canStake(role: string, status: JobStatus): boolean {
 function StakeButton({
   job,
   role,
+  onBusyChange,
 }: {
   job: Job;
   role: string;
+  onBusyChange?: (busy: boolean) => void;
 }) {
+  const queryClient = useQueryClient();
   const { data: hash, writeContract, isPending, error } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // ── Auto-invalidate on success ──────────────────────────────────
+  const hasInvalidated = useRef(false);
+
+  useEffect(() => {
+    if (isSuccess && !hasInvalidated.current) {
+      hasInvalidated.current = true;
+      queryClient.invalidateQueries({ queryKey: ["myJobs"] });
+    }
+  }, [isSuccess, queryClient]);
+
+  useEffect(() => {
+    hasInvalidated.current = false;
+  }, [hash]);
+
+  // ── Report busy state upstream ──────────────────────────────────
+  const isBusy = isPending || isConfirming;
+
+  useEffect(() => {
+    onBusyChange?.(isBusy);
+  }, [isBusy, onBusyChange]);
 
   const handleStake = () => {
     const functionName = role === "client" ? "addClientStake" : "addfreelancerStake";
@@ -424,6 +449,22 @@ function CreateJobModal({
 export default function DashboardPage() {
   const [role, setRole] = useState<string>("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [busyCards, setBusyCards] = useState<Set<string>>(new Set());
+
+  // Callback factory for per-card busy tracking
+  const makeCardBusyCb = useCallback(
+    (jobId: string) => (busy: boolean) => {
+      setBusyCards((prev) => {
+        if (busy && prev.has(jobId)) return prev;
+        if (!busy && !prev.has(jobId)) return prev;
+        const next = new Set(prev);
+        if (busy) next.add(jobId);
+        else next.delete(jobId);
+        return next;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     setRole(getCookie("role") ?? "");
@@ -599,6 +640,19 @@ export default function DashboardPage() {
                   e.currentTarget.style.boxShadow = "none";
                 }}
               >
+                {/* ── Per-card action spinner (top-right) ─────────────── */}
+                {(busyCards.has(job.id) || isRefetching) && (
+                  <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full border border-slate-700/50 bg-slate-900/80 px-2.5 py-1 backdrop-blur-sm">
+                    <Loader2
+                      className="h-3 w-3 animate-spin"
+                      style={{ color: `rgba(var(--vault-accent), 0.9)` }}
+                    />
+                    <span className="text-[9px] font-medium text-slate-500">
+                      {busyCards.has(job.id) ? "Processing…" : "Syncing…"}
+                    </span>
+                  </div>
+                )}
+
                 {/* Title + Status Row */}
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <h3 className="text-base font-semibold text-slate-100 leading-snug">
@@ -667,7 +721,20 @@ export default function DashboardPage() {
 
                 {/* Stake Button — conditional on role + status */}
                 {role && canStake(role, job.status) && (
-                  <StakeButton job={job} role={role} />
+                  <StakeButton
+                    job={job}
+                    role={role}
+                    onBusyChange={makeCardBusyCb(job.id)}
+                  />
+                )}
+
+                {/* ── Lifecycle Actions (Delivery + Danger Zone) ──────── */}
+                {role && (
+                  <JobCardActions
+                    job={job}
+                    role={role}
+                    onBusyChange={makeCardBusyCb(job.id)}
+                  />
                 )}
 
                 {/* Glow accent on hover */}
