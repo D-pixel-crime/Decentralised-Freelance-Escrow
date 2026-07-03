@@ -240,24 +240,7 @@ export default function ApplicantReviewModal({
                      <label className="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wider">
                        Allocation Setup
                      </label>
-                     {/* UX Element: Stake amount slider/input (purely cosmetic per prompt constraint) */}
-                     <div className="flex items-center gap-4">
-                        <div className="flex-1">
-                          <input 
-                            type="range" 
-                            className="w-full accent-[rgba(var(--vault-accent),1)] cursor-pointer disabled:cursor-not-allowed disabled:opacity-50" 
-                            min={job?.payMin || 0}
-                            max={job?.payMax || 0}
-                            step="0.01"
-                            value={sliderValue}
-                            onChange={(e) => setSliderValue(Number(e.target.value))}
-                            disabled={job?.payMin === job?.payMax}
-                          />
-                        </div>
-                        <div className="text-xs text-slate-500 whitespace-nowrap">
-                          {sliderValue} ETH (Stake set in next step)
-                        </div>
-                     </div>
+
                    </div>
 
                    <button

@@ -110,6 +110,7 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
                     <SelectLabel>Role</SelectLabel>
                     <SelectItem value="freelancer">Freelancer</SelectItem>
                     <SelectItem value="client">Client</SelectItem>
+                    <SelectItem value="arbitrator">Arbitrator</SelectItem>
                   </SelectGroup>
                 </SelectContent>
               </Select>

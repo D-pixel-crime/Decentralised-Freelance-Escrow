@@ -23,7 +23,7 @@ func ApplyJob(c *gin.Context) {
 	}
 	roleStr, ok := role.(string)
 	if !ok || roleStr != "freelancer" {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Only freelancers can apply for jobs"})
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only freelancers are authorized to apply for jobs"})
 		return
 	}
 

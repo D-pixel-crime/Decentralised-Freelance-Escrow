@@ -34,6 +34,10 @@ func userSignup(username, email, ethAccount, role string) error {
 		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
 		doc := models.Freelancer{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}, ActiveJobs: []bson.ObjectID{}}
 		_, err = coll.InsertOne(context.Background(), doc)
+	case "arbitrator":
+		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("arbitrator")
+		doc := models.Arbitrator{BaseUser: models.BaseUser{Username: username, Email: email, EthAccount: ethAccount}}
+		_, err = coll.InsertOne(context.Background(), doc)
 	default:
 		return fmt.Errorf("Invalid User Type!")
 	}

@@ -50,10 +50,10 @@ export default function AppNavbar() {
     setSigningOut(false);
   };
 
-  /* Build nav items dynamically based on role — hide Marketplace for clients */
+  /* Build nav items dynamically based on role — hide Marketplace for clients and arbitrators */
   const navItems = [
     { href: "/dashboard", label: "My Dashboard", icon: LayoutDashboard, show: true },
-    { href: "/marketplace", label: "Marketplace", icon: Store, show: role !== "client" },
+    { href: "/marketplace", label: "Marketplace", icon: Store, show: role !== "client" && role !== "arbitrator" },
   ].filter((item) => item.show);
 
   return (

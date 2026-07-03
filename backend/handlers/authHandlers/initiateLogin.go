@@ -17,7 +17,7 @@ import (
 
 type LoginRequest struct {
 	EthAccount string `json:"ethAccount" binding:"required"`
-	Role       string `json:"role" binding:"required"`
+	Role       string `json:"role" binding:"required,oneof=client freelancer arbitrator"`
 }
 
 func checkUserAndProduceNonce(ethAccount, role string) (string, error) {
@@ -35,6 +35,10 @@ func checkUserAndProduceNonce(ethAccount, role string) (string, error) {
 	case "freelancer":
 		var res models.Freelancer
 		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
+		err = coll.FindOne(context.TODO(), filter).Decode(&res)
+	case "arbitrator":
+		var res models.Arbitrator
+		coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("arbitrator")
 		err = coll.FindOne(context.TODO(), filter).Decode(&res)
 	default:
 		return "", fmt.Errorf("Invalid User Type!")

@@ -181,6 +181,8 @@ func GetMyJobs(c *gin.Context) {
 			return
 		}
 		userID = freelancer.ID
+	} else if roleStr == "arbitrator" {
+		// Arbitrator uses ethAccountStr directly for filtering, so no ObjectID fetch needed.
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
 		return
@@ -196,8 +198,15 @@ func GetMyJobs(c *gin.Context) {
 	var filter bson.M
 	if roleStr == "client" {
 		filter = bson.M{"clientId": userID}
+	} else if roleStr == "arbitrator" {
+		filter = bson.M{"arbitratorEth": ethAccountStr}
 	} else {
-		filter = bson.M{"freelancerId": userID}
+		filter = bson.M{
+			"$or": []bson.M{
+				{"freelancerId": userID},
+				{"applicants": ethAccountStr},
+			},
+		}
 	}
 
 	cursor, err := coll.Find(ctx, filter)

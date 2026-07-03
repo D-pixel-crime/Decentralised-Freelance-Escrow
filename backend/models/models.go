@@ -32,6 +32,10 @@ type Freelancer struct {
 	Profile    FreelancerProfile `bson:"profile" json:"profile"`
 }
 
+type Arbitrator struct {
+	BaseUser `bson:",inline"`
+}
+
 type JobStatus string
 
 const (
@@ -55,6 +59,7 @@ type Job struct {
 	FreelancerID    bson.ObjectID `bson:"freelancerId" json:"freelancerId"`
 	Status          JobStatus     `bson:"status" json:"status"`
 	Applicants      []string      `bson:"applicants,omitempty" json:"applicants"`
+	ArbitratorEth   string        `bson:"arbitratorEth,omitempty" json:"arbitratorEth"`
 
 	// ── Web2 metadata (off-chain, MongoDB-only) ──
 	Title        string  `bson:"title,omitempty" json:"title"`

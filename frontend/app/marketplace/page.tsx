@@ -31,7 +31,7 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     const role = getCookie("role");
-    if (role === "client") {
+    if (role === "client" || role === "arbitrator") {
       router.replace("/dashboard");
     }
   }, [router]);

@@ -37,9 +37,9 @@ function StatusBadge({ status }: { status: string }) {
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.UNALLOCATED;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${style.bg} ${style.text}`}
+      className={`inline-flex items-center shrink-0 whitespace-nowrap gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${style.bg} ${style.text}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${style.dot}`} />
       {status.replace(/_/g, " ")}
     </span>
   );
@@ -82,6 +82,7 @@ function StakeButton({
 }) {
   const queryClient = useQueryClient();
   const { data: hash, writeContract, isPending, error } = useWriteContract();
+  const [stakeAmount, setStakeAmount] = useState<string>(job.payMin !== undefined && job.payMin > 0 ? job.payMin.toString() : "1");
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
@@ -110,12 +111,13 @@ function StakeButton({
 
   const handleStake = () => {
     const functionName = role === "client" ? "addClientStake" : "addfreelancerStake";
+    const val = role === "client" ? parseEther(stakeAmount || "0") : parseEther("0.01");
 
     writeContract({
       abi: FREELANCE_ESCROW_ABI,
       address: job.contractAddress as `0x${string}`,
       functionName,
-      value: parseEther("1"),
+      value: val,
     });
   };
 
@@ -133,7 +135,21 @@ function StakeButton({
   const isWaiting = isPending || isConfirming;
 
   return (
-    <div className="mt-4">
+    <div className="mt-4 flex flex-col gap-3">
+      {role === "client" && (
+        <div className="flex items-center justify-between gap-3 bg-slate-900/60 rounded-xl px-4 py-2 border border-slate-700/60">
+          <label className="text-xs font-semibold text-slate-400">Stake (ETH):</label>
+          <input 
+            type="number" 
+            step="0.01"
+            min="0"
+            value={stakeAmount}
+            onChange={(e) => setStakeAmount(e.target.value)}
+            disabled={isWaiting}
+            className="w-24 bg-transparent text-sm text-right text-slate-200 outline-none placeholder-slate-600 font-mono disabled:opacity-50"
+          />
+        </div>
+      )}
       <button
         onClick={handleStake}
         disabled={isWaiting}
@@ -161,7 +177,7 @@ function StakeButton({
         ) : (
           <>
             <Wallet className="h-4 w-4" />
-            Stake Funds (1 ETH)
+            Stake Funds ({role === "client" ? stakeAmount || "0" : "0.01"} ETH)
           </>
         )}
       </button>
@@ -281,7 +297,7 @@ function CreateJobModal({
 
       {/* Modal */}
       <div
-        className="relative w-full max-w-lg rounded-2xl p-6 shadow-2xl"
+        className="relative w-full max-w-3xl rounded-2xl p-6 shadow-2xl"
         style={{
           background: `linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(10, 14, 26, 0.98))`,
           border: `1px solid rgba(var(--vault-accent), 0.20)`,
@@ -346,7 +362,7 @@ function CreateJobModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Describe the scope of work, deliverables, and milestones…"
               rows={3}
-              className="w-full resize-none rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-colors focus:border-[rgba(var(--vault-accent),0.5)] focus:ring-1 focus:ring-[rgba(var(--vault-accent),0.25)]"
+              className="w-full resize-y rounded-xl border border-slate-700/60 bg-slate-900/60 px-4 py-2.5 text-sm text-slate-200 placeholder-slate-600 outline-none transition-colors focus:border-[rgba(var(--vault-accent),0.5)] focus:ring-1 focus:ring-[rgba(var(--vault-accent),0.25)]"
             />
           </div>
 

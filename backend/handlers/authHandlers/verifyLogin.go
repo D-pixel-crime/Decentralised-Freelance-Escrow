@@ -18,7 +18,7 @@ import (
 
 type LoginVerificationRequest struct {
 	EthAccount string `json:"ethAccount" binding:"required"`
-	Role       string `json:"role" binding:"required"`
+	Role       string `json:"role" binding:"required,oneof=client freelancer arbitrator"`
 	Message    string `json:"message" binding:"required"`
 	Signature  string `json:"signature" binding:"required"`
 }
@@ -65,6 +65,19 @@ func verifyUser(ethAccount, role, message, signature string) (string, string, er
 	case "freelancer":
 		var res models.Freelancer
 		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
+		err = coll.FindOne(context.TODO(), filter).Decode(&res)
+		if err != nil {
+			if err == mongo.ErrNoDocuments {
+				return "", "", err
+			}
+			return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
+		}
+
+		username = res.Username
+		email = res.Email
+	case "arbitrator":
+		var res models.Arbitrator
+		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("arbitrator")
 		err = coll.FindOne(context.TODO(), filter).Decode(&res)
 		if err != nil {
 			if err == mongo.ErrNoDocuments {

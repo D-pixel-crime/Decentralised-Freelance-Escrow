@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -41,7 +42,7 @@ func checkFreelancer(freelancerEthAccount string) (bson.ObjectID, error) {
 	return res.ID, nil
 }
 
-func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bson.ObjectID) (string, error) {
+func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bson.ObjectID) (string, string, error) {
 	rpcURL := os.Getenv("WEB3_RPC_URL")
 	if rpcURL == "" {
 		rpcURL = "http://127.0.0.1:8545"
@@ -49,7 +50,7 @@ func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bs
 
 	client, err := ethclient.Dial(rpcURL)
 	if err != nil {
-		return "", fmt.Errorf("Failed to connect to Ethereum RPC at %s: %v", rpcURL, err)
+		return "", "", fmt.Errorf("Failed to connect to Ethereum RPC at %s: %v", rpcURL, err)
 	}
 
 	privKeyStr := os.Getenv("PRIVATE_KEY")
@@ -65,34 +66,48 @@ func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bs
 
 	contractOwner, err := crypto.HexToECDSA(privKeyStr)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse private key: %v", err)
+		return "", "", fmt.Errorf("failed to parse private key: %v", err)
 	}
 
 	chainId, err := client.ChainID(context.Background())
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	authenticatedTransactor, err := bind.NewKeyedTransactorWithChainID(contractOwner, chainId)
 	if err != nil {
-		return "", fmt.Errorf("Failed to create transactor: %v", err)
+		return "", "", fmt.Errorf("Failed to create transactor: %v", err)
 	}
 
 	jobId := new(big.Int).SetBytes(mongoJobId[:])
 	clientAddr := common.HexToAddress(clientEthAccount)
 	freelancerAddr := common.HexToAddress(freelancerEthAccount)
-	arbitratorAddr := common.HexToAddress(os.Getenv("ARBITRATOR_ACCOUNT"))
+	
+	var arbitrators []models.Arbitrator
+	arbColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("arbitrator")
+	cursor, err := arbColl.Find(context.TODO(), bson.M{})
+	
+	arbitratorAccountStr := os.Getenv("ARBITRATOR_ACCOUNT")
+	if err == nil {
+		if err = cursor.All(context.TODO(), &arbitrators); err == nil && len(arbitrators) > 0 {
+			randSource := rand.New(rand.NewSource(time.Now().UnixNano()))
+			selected := arbitrators[randSource.Intn(len(arbitrators))]
+			arbitratorAccountStr = selected.EthAccount
+		}
+	}
+	arbitratorAddr := common.HexToAddress(arbitratorAccountStr)
+	
 	confirmationPeriod := big.NewInt(int64(time.Hour * 24 * 2))
 
 	contractAddr, _, _, err := contracts.DeployFreelanceEscrow(authenticatedTransactor, client, jobId, clientAddr, freelancerAddr, arbitratorAddr, confirmationPeriod)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return contractAddr.Hex(), nil
+	return contractAddr.Hex(), arbitratorAccountStr, nil
 }
 
-func updateJob(freelancerEthAccount, contractAddr string, jobId bson.ObjectID) error {
+func updateJob(freelancerEthAccount, contractAddr string, jobId bson.ObjectID, arbitratorAccountStr string) error {
 	var res models.Job
 	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
 	filter := bson.M{"_id": jobId}
@@ -102,7 +117,7 @@ func updateJob(freelancerEthAccount, contractAddr string, jobId bson.ObjectID) e
 		return err
 	}
 
-	update := bson.M{"$set": bson.M{"freelancerId": freelancerId, "status": models.AGREED, "contractAddress": contractAddr}}
+	update := bson.M{"$set": bson.M{"freelancerId": freelancerId, "status": models.AGREED, "contractAddress": contractAddr, "arbitratorEth": arbitratorAccountStr}}
 	err = coll.FindOneAndUpdate(context.TODO(), filter, update).Decode(&res)
 	if err != nil {
 		return err
@@ -149,13 +164,13 @@ func AllocateJob(c *gin.Context) {
 		return
 	}
 
-	contractAddr, err := deployContract(reqBody.FreelancerEthAccount, clientEthAccount, reqBody.JobId)
+	contractAddr, arbitratorAccountStr, err := deployContract(reqBody.FreelancerEthAccount, clientEthAccount, reqBody.JobId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!" + err.Error()})
 		return
 	}
 
-	err = updateJob(reqBody.FreelancerEthAccount, contractAddr, reqBody.JobId)
+	err = updateJob(reqBody.FreelancerEthAccount, contractAddr, reqBody.JobId, arbitratorAccountStr)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User Not Found!"})
