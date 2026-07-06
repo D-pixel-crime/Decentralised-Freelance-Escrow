@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 
 	// Indexer disabled — JIT sync in GetMyJobs replaces push-based WebSocket listeners
 	// "github.com/D-pixel-crime/Freelance_Escrow/backend/indexer"
@@ -15,7 +16,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func generateBindings() {
+	log.Info("Compiling smart contracts and generating Go bindings...")
+
+	// Step 1: Run forge build
+	buildCmd := exec.Command("forge", "build", "--extra-output-files", "abi", "bin")
+	buildCmd.Dir = "../contracts"
+	buildOut, err := buildCmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to run forge build: %v\nOutput: %s", err, string(buildOut))
+	}
+
+	// Step 2: Run abigen
+	abigenCmd := exec.Command("abigen",
+		"--abi", "../contracts/out/FreelanceEscrow.sol/FreelanceEscrow.abi.json",
+		"--bin", "../contracts/out/FreelanceEscrow.sol/FreelanceEscrow.bin",
+		"--pkg", "contracts",
+		"--type", "FreelanceEscrow",
+		"--out", "./contracts/FreelanceEscrow.go",
+	)
+	abiOut, err := abigenCmd.CombinedOutput()
+	if err != nil {
+		log.Fatalf("Failed to run abigen: %v\nOutput: %s", err, string(abiOut))
+	}
+
+	log.Info("Successfully generated smart contract bindings!")
+}
+
 func main() {
+	generateBindings()
 	utils.LoadENV()
 	_, err := utils.ConnectToDb()
 	if err != nil {

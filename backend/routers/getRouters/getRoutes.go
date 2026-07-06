@@ -25,6 +25,7 @@ func GET_Routes(getRouter *gin.Engine) {
 		protectedRouter.GET("/jobs/me", gethandlers.GetMyJobs)
 		protectedRouter.GET("/profile", gethandlers.GetProfile)
 		protectedRouter.GET("/profile/:address", gethandlers.GetProfileByAddress)
+		protectedRouter.GET("/contact/:address", gethandlers.GetContact)
 	}
 
 }

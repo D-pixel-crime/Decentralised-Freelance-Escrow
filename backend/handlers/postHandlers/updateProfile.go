@@ -41,6 +41,11 @@ func UpdateProfile(c *gin.Context) {
 		return
 	}
 
+	if len(profileUpdate.DocumentCIDs) > 3 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Maximum of 3 documents allowed"})
+		return
+	}
+
 	dbName := os.Getenv("DATABASE_NAME")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -56,6 +61,7 @@ func UpdateProfile(c *gin.Context) {
 			"profile.githubLink":     profileUpdate.GithubLink,
 			"profile.leetcodeLink":   profileUpdate.LeetCodeLink,
 			"profile.codeforcesLink": profileUpdate.CodeforcesLink,
+			"profile.documentCids":   profileUpdate.DocumentCIDs,
 		},
 	}
 

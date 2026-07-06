@@ -5,6 +5,9 @@ import type { Job } from "@/types/job";
 import DeliveryActions from "./DeliveryActions";
 import DangerZoneActions from "./DangerZoneActions";
 import SettlementPanel from "./SettlementPanel";
+import { User, Gavel } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
 /**
  * JobCardActions — orchestrator that renders the correct action groups
@@ -70,8 +73,42 @@ export default function JobCardActions({
     // PAYMENT_DISPUTED might still show danger zone info
   }
 
+  // ── Dispute Info for Client & Freelancer ──
+  const isDisputed = job.status === "RANDOM_DISPUTED" || job.status === "PAYMENT_DISPUTED";
+  
+  const { data: arbitratorContact } = useQuery({
+    queryKey: ["contact", job.arbitratorEth, "arbitrator"],
+    queryFn: async () => {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/get/contact/${job.arbitratorEth}?role=arbitrator`,
+        { withCredentials: true }
+      );
+      return res.data;
+    },
+    enabled: isDisputed && !!job.arbitratorEth && role !== "arbitrator",
+  });
+
   return (
     <>
+      {isDisputed && role !== "arbitrator" && (
+        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <h4 className="mb-3 text-xs font-semibold text-amber-400 flex items-center gap-2 uppercase tracking-wider">
+            <Gavel className="h-4 w-4" />
+            Arbitrator Assigned
+          </h4>
+          <div className="space-y-3">
+            <div className="flex flex-col gap-1 text-sm text-slate-300">
+              <span className="text-xs text-slate-500">Arbitrator Address:</span>
+              <span className="font-mono text-xs">{job.arbitratorEth}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <User className="h-4 w-4 text-slate-500" />
+              <span className="text-slate-500">Contact:</span> {arbitratorContact?.email || <span className="text-slate-600 italic">No email provided</span>}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delivery actions: Request Payment / Approve / Reject */}
       <DeliveryActions
         job={job}

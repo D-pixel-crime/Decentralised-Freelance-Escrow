@@ -155,7 +155,7 @@ export default function JobDetailsPage({ params }: { params: any }) {
               </div>
               <div>
                 <span className="text-[10px] font-medium uppercase tracking-widest text-slate-600">Contact Email</span>
-                <p className="mt-1 text-sm text-slate-300">{job.contactEmail || "Not provided"}</p>
+                <p className="mt-1 text-sm text-slate-300 italic">Masked (Revealed during dispute)</p>
               </div>
               <div>
                 <span className="text-[10px] font-medium uppercase tracking-widest text-slate-600">Applicants</span>

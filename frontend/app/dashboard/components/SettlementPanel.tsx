@@ -4,9 +4,10 @@ import React, { useState } from "react";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { FREELANCE_ESCROW_ABI } from "@/constants/contract";
-import { Loader2, ShieldCheck, DollarSign } from "lucide-react";
+import { Loader2, ShieldCheck, DollarSign, Mail, ExternalLink, User } from "lucide-react";
 import type { Job } from "@/types/job";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import axios from "axios";
 
 interface SettlementPanelProps {
   job: Job;
@@ -30,6 +31,18 @@ export default function SettlementPanel({ job, onBusyChange }: SettlementPanelPr
     address: job.contractAddress as `0x${string}`,
     abi: FREELANCE_ESCROW_ABI,
     functionName: "getClientStake",
+  });
+
+  const { data: freelancerContact } = useQuery({
+    queryKey: ["contact", job.freelancerId, "freelancer"],
+    queryFn: async () => {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/get/contact/${job.freelancerId}?role=freelancer`,
+        { withCredentials: true }
+      );
+      return res.data;
+    },
+    enabled: !!job.freelancerId,
   });
 
   const { data: hash, writeContract, isPending, error } = useWriteContract();
@@ -68,6 +81,34 @@ export default function SettlementPanel({ job, onBusyChange }: SettlementPanelPr
 
       <div className="mb-4 text-xs text-slate-400">
         Total Contract Balance: <span className="font-mono text-slate-200">{formatEther(totalBalance)} ETH</span>
+      </div>
+
+      <div className="mb-6 rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+        <h5 className="mb-3 text-xs font-semibold text-amber-400 uppercase tracking-wider">Dispute Evidence & Contacts</h5>
+        
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-sm text-slate-300">
+            <User className="h-4 w-4 text-slate-500" />
+            <span className="text-slate-500">Client:</span> {job.contactEmail || <span className="text-slate-600 italic">No email provided</span>}
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-slate-300">
+            <User className="h-4 w-4 text-slate-500" />
+            <span className="text-slate-500">Freelancer:</span> {freelancerContact?.email || <span className="text-slate-600 italic">No email provided</span>}
+          </div>
+
+          {job.deliverableCid && (
+            <a
+              href={`https://gateway.pinata.cloud/ipfs/${job.deliverableCid}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex items-center gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3" />
+              View Work Evidence
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="space-y-3">

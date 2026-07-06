@@ -297,6 +297,7 @@ contract FreelanceEscrow is ReentrancyGuard {
 
     function acceptJobCompletion()
         public
+        payable
         nonReentrant
         onlyClient
         noDispute

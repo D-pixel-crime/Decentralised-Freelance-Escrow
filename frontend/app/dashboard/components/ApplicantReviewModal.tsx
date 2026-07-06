@@ -62,6 +62,7 @@ export default function ApplicantReviewModal({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["myJobs"] });
+      queryClient.invalidateQueries({ queryKey: ["openJobs"] });
       onClose(); // Close modal upon successful allocation
     },
   });

@@ -490,24 +490,23 @@ export default function DashboardPage() {
   const [role, setRole] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"jobs" | "profile">("jobs");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [busyCards, setBusyCards] = useState<Set<string>>(new Set());
+  const [busyCards, setBusyCards] = useState<Record<string, boolean>>({});
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
 
-  // Callback factory for per-card busy tracking
+  // Callback factory for per-card, per-component busy tracking
   const makeCardBusyCb = useCallback(
-    (jobId: string) => (busy: boolean) => {
+    (key: string) => (busy: boolean) => {
       setBusyCards((prev) => {
-        if (busy && prev.has(jobId)) return prev;
-        if (!busy && !prev.has(jobId)) return prev;
-        const next = new Set(prev);
-        if (busy) next.add(jobId);
-        else next.delete(jobId);
-        return next;
+        if (prev[key] === busy) return prev;
+        return { ...prev, [key]: busy };
       });
     },
     []
   );
+
+  const isCardBusy = (jobId: string) => 
+    Object.keys(busyCards).some(k => k.startsWith(jobId) && busyCards[k]);
 
   useEffect(() => {
     setRole(getCookie("role") ?? "");
@@ -695,7 +694,7 @@ export default function DashboardPage() {
 
         {/* Job Cards */}
         {!isLoading && !isError && uniqueJobs.length > 0 && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             {uniqueJobs.map((job) => (
               <div
                 key={job.id}
@@ -714,14 +713,14 @@ export default function DashboardPage() {
                 }}
               >
                 {/* ── Per-card action spinner (top-right) ─────────────── */}
-                {(busyCards.has(job.id) || isRefetching) && (
+                {(isCardBusy(job.id) || isRefetching) && (
                   <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full border border-slate-700/50 bg-slate-900/80 px-2.5 py-1 backdrop-blur-sm">
                     <Loader2
                       className="h-3 w-3 animate-spin"
                       style={{ color: `rgba(var(--vault-accent), 0.9)` }}
                     />
                     <span className="text-[9px] font-medium text-slate-500">
-                      {busyCards.has(job.id) ? "Processing…" : "Syncing…"}
+                      {isCardBusy(job.id) ? "Processing…" : "Syncing…"}
                     </span>
                   </div>
                 )}
@@ -816,18 +815,18 @@ export default function DashboardPage() {
                   <StakeButton
                     job={job}
                     role={role}
-                    onBusyChange={makeCardBusyCb(job.id)}
+                    onBusyChange={makeCardBusyCb(`${job.id}-stake`)}
                   />
                 )}
 
-                {/* ── Lifecycle Actions (Delivery + Danger Zone) ──────── */}
-                {role && (
+                {/* ── Status-dependent action buttons ── */}
+                <div className="mt-4 border-t border-slate-800/60 pt-4">
                   <JobCardActions
                     job={job}
                     role={role}
-                    onBusyChange={makeCardBusyCb(job.id)}
+                    onBusyChange={makeCardBusyCb(`${job.id}-actions`)}
                   />
-                )}
+                </div>
 
                 {/* Glow accent on hover */}
                 <div

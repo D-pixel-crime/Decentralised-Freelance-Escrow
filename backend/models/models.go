@@ -24,6 +24,7 @@ type FreelancerProfile struct {
 	GithubLink     string   `bson:"githubLink" json:"githubLink"`
 	LeetCodeLink   string   `bson:"leetcodeLink" json:"leetcodeLink"`
 	CodeforcesLink string   `bson:"codeforcesLink" json:"codeforcesLink"`
+	DocumentCIDs   []string `bson:"documentCids,omitempty" json:"documentCids"`
 }
 
 type Freelancer struct {
@@ -60,6 +61,7 @@ type Job struct {
 	Status          JobStatus     `bson:"status" json:"status"`
 	Applicants      []string      `bson:"applicants,omitempty" json:"applicants"`
 	ArbitratorEth   string        `bson:"arbitratorEth,omitempty" json:"arbitratorEth"`
+	DeliverableCID  string        `bson:"deliverableCid,omitempty" json:"deliverableCid"`
 
 	// ── Web2 metadata (off-chain, MongoDB-only) ──
 	Title        string  `bson:"title,omitempty" json:"title"`

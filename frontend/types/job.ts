@@ -18,6 +18,8 @@ export interface Job {
   freelancerId: string;
   status: JobStatus;
   applicants?: string[];
+  deliverableCid?: string;
+  arbitratorEth?: string;
 
   // Web2 metadata (off-chain)
   title?: string;

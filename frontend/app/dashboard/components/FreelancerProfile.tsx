@@ -14,6 +14,7 @@ interface FreelancerProfileData {
   githubLink: string;
   leetcodeLink: string;
   codeforcesLink: string;
+  documentCids: string[];
 }
 
 export default function FreelancerProfile() {
@@ -40,13 +41,18 @@ export default function FreelancerProfile() {
     githubLink: "",
     leetcodeLink: "",
     codeforcesLink: "",
+    documentCids: [],
   });
 
   const [techStackInput, setTechStackInput] = useState("");
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
 
   useEffect(() => {
     if (profile) {
-      setFormData(profile);
+      setFormData({
+        ...profile,
+        documentCids: profile.documentCids || [],
+      });
       setTechStackInput(profile.techStack?.join(", ") || "");
     }
   }, [profile]);
@@ -79,6 +85,40 @@ export default function FreelancerProfile() {
     }));
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (formData.documentCids.length >= 3) return;
+
+    setIsUploadingFile(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+
+      const res = await axios.post("/api/ipfs/file", uploadFormData);
+
+      if (res.data?.IpfsHash) {
+        setFormData(prev => ({
+          ...prev,
+          documentCids: [...prev.documentCids, res.data.IpfsHash]
+        }));
+      }
+    } catch (err) {
+      console.error("Failed to upload file:", err);
+    } finally {
+      setIsUploadingFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeDocument = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      documentCids: prev.documentCids.filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     mutation.mutate(formData);
@@ -107,7 +147,7 @@ export default function FreelancerProfile() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-4xl">
       <div
         className="rounded-2xl p-8 backdrop-blur-sm shadow-2xl transition-all duration-300"
         style={{
@@ -148,8 +188,8 @@ export default function FreelancerProfile() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             {/* Tech Stack */}
-             <div>
+            {/* Tech Stack */}
+            <div>
               <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
                 <Code className="h-4 w-4 text-slate-500" /> Tech Stack
               </label>
@@ -162,7 +202,7 @@ export default function FreelancerProfile() {
               />
               <p className="mt-1.5 text-[11px] text-slate-500">Comma separated values</p>
             </div>
-            
+
             {/* Resume Link */}
             <div>
               <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-300">
@@ -211,7 +251,7 @@ export default function FreelancerProfile() {
 
           <div className="border-t border-slate-800/60 pt-6 mt-6">
             <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
-               External Profiles
+              External Profiles
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Github */}
@@ -261,12 +301,78 @@ export default function FreelancerProfile() {
             </div>
           </div>
 
+          {/* Supporting Documents */}
+          <div className="border-t border-slate-800/60 pt-6 mt-6">
+            <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+              Supporting Documents (Max 3)
+            </h3>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <input
+                  type="file"
+                  id="document-upload"
+                  onChange={handleFileUpload}
+                  disabled={formData.documentCids.length >= 3 || isUploadingFile}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="document-upload"
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200 cursor-pointer border ${formData.documentCids.length >= 3 || isUploadingFile
+                      ? "opacity-50 cursor-not-allowed border-slate-700 bg-slate-800 text-slate-500"
+                      : "border-[rgba(var(--vault-accent),0.4)] bg-[rgba(var(--vault-accent),0.1)] text-[rgba(var(--vault-accent),1)] hover:bg-[rgba(var(--vault-accent),0.2)]"
+                    }`}
+                >
+                  {isUploadingFile ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      Upload Document
+                    </>
+                  )}
+                </label>
+                <span className="text-xs text-slate-500">
+                  {formData.documentCids.length} / 3 uploaded
+                </span>
+              </div>
+
+              {formData.documentCids.length > 0 && (
+                <div className="grid gap-2">
+                  {formData.documentCids.map((cid, index) => (
+                    <div key={cid + index} className="flex items-center justify-between p-3 rounded-lg bg-slate-900/60 border border-slate-700/50">
+                      <a
+                        href={`https://gateway.pinata.cloud/ipfs/${cid}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 text-sm text-slate-300 hover:text-[rgba(var(--vault-accent),1)] transition-colors truncate max-w-[80%]"
+                      >
+                        <LinkIcon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{cid}</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => removeDocument(index)}
+                        className="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {mutation.isError && (
-             <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3">
-               <p className="text-sm text-red-400">
-                 Failed to save profile. Please try again.
-               </p>
-             </div>
+            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3">
+              <p className="text-sm text-red-400">
+                Failed to save profile. Please try again.
+              </p>
+            </div>
           )}
 
           {success && (
