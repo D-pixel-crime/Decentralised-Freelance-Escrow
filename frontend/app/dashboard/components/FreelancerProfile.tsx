@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { Loader2, Save, User, Link as LinkIcon, BookOpen, Briefcase, Code, Github } from "lucide-react";
+import { useToast } from "@/contexts/ToastContext";
+import { extractErrorMsg } from "@/lib/utils";
 
 interface FreelancerProfileData {
   bio: string;
@@ -19,7 +21,7 @@ interface FreelancerProfileData {
 
 export default function FreelancerProfile() {
   const queryClient = useQueryClient();
-  const [success, setSuccess] = useState(false);
+  const toast = useToast();
 
   const { data: profile, isLoading, isError } = useQuery<FreelancerProfileData>({
     queryKey: ["freelancerProfile"],
@@ -66,10 +68,12 @@ export default function FreelancerProfile() {
       );
     },
     onSuccess: () => {
-      setSuccess(true);
+      toast.success("Profile updated successfully!");
       queryClient.invalidateQueries({ queryKey: ["freelancerProfile"] });
-      setTimeout(() => setSuccess(false), 3000);
     },
+    onError: () => {
+      toast.error("Failed to save profile. Please try again.");
+    }
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -104,8 +108,8 @@ export default function FreelancerProfile() {
           documentCids: [...prev.documentCids, res.data.IpfsHash]
         }));
       }
-    } catch (err) {
-      console.error("Failed to upload file:", err);
+    } catch (err: any) {
+      toast.error("Failed to upload file: " + extractErrorMsg(err));
     } finally {
       setIsUploadingFile(false);
       e.target.value = '';
@@ -366,24 +370,6 @@ export default function FreelancerProfile() {
               )}
             </div>
           </div>
-
-          {mutation.isError && (
-            <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3">
-              <p className="text-sm text-red-400">
-                Failed to save profile. Please try again.
-              </p>
-            </div>
-          )}
-
-          {success && (
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
-              <span className="h-2 w-2 rounded-full bg-emerald-400" />
-              <span className="text-sm font-medium text-emerald-400">
-                Profile updated successfully!
-              </span>
-            </div>
-          )}
-
           <div className="pt-4 flex justify-end">
             <button
               type="submit"

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import { FREELANCE_ESCROW_ABI } from "@/constants/contract";
+import { useToast } from "@/contexts/ToastContext";
 
 /**
  * useEscrowAction — DRY hook for non-payable escrow lifecycle calls.
@@ -31,6 +32,7 @@ export function useEscrowAction(
   onBusyChange?: (busy: boolean) => void
 ) {
   const queryClient = useQueryClient();
+  const toast = useToast();
 
   const {
     data: hash,
@@ -68,7 +70,6 @@ export function useEscrowAction(
     onBusyChange?.(isBusy);
   }, [isBusy, onBusyChange]);
 
-  // ── Execute ─────────────────────────────────────────────────────────
   const execute = () => {
     reset(); // clear previous state
     writeContract({
@@ -76,6 +77,17 @@ export function useEscrowAction(
       address: contractAddress as `0x${string}`,
       functionName,
       // NO value — nonpayable
+    }, {
+      onError: (err: any) => {
+        let msg = err.shortMessage || err.message || "Transaction failed";
+        if (msg.toLowerCase().includes("user rejected")) {
+          msg = "Transaction rejected by user.";
+        }
+        toast.error(msg);
+      },
+      onSuccess: () => {
+        toast.success("Transaction submitted to network.");
+      }
     });
   };
 

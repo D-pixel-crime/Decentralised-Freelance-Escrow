@@ -16,6 +16,7 @@ import { ObjectId } from "bson";
 import JobCardActions from "./components/JobCardActions";
 import FreelancerProfile from "./components/FreelancerProfile";
 import ApplicantReviewModal from "./components/ApplicantReviewModal";
+import { extractErrorMsg } from "@/lib/utils";
 
 // ── Status badge styling ────────────────────────────────────────────────────
 
@@ -272,11 +273,8 @@ function CreateJobModal({
       setTimeout(() => {
         handleClose();
       }, 1500);
-    } catch (err) {
-      const msg = axios.isAxiosError(err)
-        ? err.response?.data?.error || err.message
-        : "Unknown error";
-      setError(msg);
+    } catch (err: any) {
+      setError(extractErrorMsg(err, "Unknown error"));
     } finally {
       setIsCreating(false);
     }

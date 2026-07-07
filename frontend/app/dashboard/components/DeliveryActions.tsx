@@ -9,6 +9,8 @@ import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { FREELANCE_ESCROW_ABI } from "@/constants/contract";
 import { parseEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/contexts/ToastContext";
+import { extractErrorMsg } from "@/lib/utils";
 
 // ── Button styling helpers ─────────────────────────────────────────────────
 
@@ -121,6 +123,7 @@ export default function DeliveryActions({
   role: string;
   onBusyChange: (busy: boolean) => void;
 }) {
+  const toast = useToast();
   // Track aggregated busy state from multiple hooks
   const [busyMap, setBusyMap] = useState<Record<string, boolean>>({});
 
@@ -174,8 +177,7 @@ export default function DeliveryActions({
       requestPayment.execute();
       setShowEvidenceUI(false);
     } catch (err: any) {
-      console.error(err);
-      alert("Failed to submit evidence. See console for details.");
+      toast.error("Failed to submit evidence: " + extractErrorMsg(err));
     } finally {
       setIsSubmittingEvidence(false);
       setBusy(false);
@@ -208,6 +210,17 @@ export default function DeliveryActions({
       address: job.contractAddress as `0x${string}`,
       functionName: "acceptJobCompletion",
       value: parseEther(payAmount || "0"),
+    }, {
+      onError: (err: any) => {
+        let msg = err.shortMessage || err.message || "Transaction failed";
+        if (msg.toLowerCase().includes("user rejected")) {
+          msg = "Transaction rejected by user.";
+        }
+        toast.error(msg);
+      },
+      onSuccess: () => {
+        toast.success("Transaction submitted to network.");
+      }
     });
   };
 
@@ -253,11 +266,6 @@ export default function DeliveryActions({
               successLabel="Payment requested!"
             />
           </div>
-          {requestPayment.error && (
-            <p className="text-xs text-red-400/80 truncate" title={requestPayment.error.message}>
-              {requestPayment.error.message.slice(0, 80) + "…"}
-            </p>
-          )}
         </div>
       );
     }
@@ -274,13 +282,6 @@ export default function DeliveryActions({
           label="Submit Evidence & Request Payment"
           successLabel="Payment requested!"
         />
-        {requestPayment.error && (
-          <p className="text-xs text-red-400/80 truncate" title={requestPayment.error.message}>
-            {requestPayment.error.message.length > 80
-              ? requestPayment.error.message.slice(0, 80) + "…"
-              : requestPayment.error.message}
-          </p>
-        )}
       </div>
     );
   }
@@ -344,11 +345,6 @@ export default function DeliveryActions({
             label="Reject Work"
             successLabel="Work rejected — dispute raised."
           />
-        )}
-        {(acceptError || rejectJob.error) && (
-          <p className="text-xs text-red-400/80 truncate">
-            {(acceptError || rejectJob.error)?.message?.slice(0, 80)}
-          </p>
         )}
       </div>
     );

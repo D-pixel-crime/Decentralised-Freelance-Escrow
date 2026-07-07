@@ -32,11 +32,14 @@ import { BrowserProvider, getAddress } from "ethers"
 import { useRouter } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
+import { useToast } from "@/contexts/ToastContext";
+import { extractErrorMsg } from "@/lib/utils";
 
 const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
     const [role, setRole] = useState("")
     const router = useRouter();
     const { address, isConnected } = useAccount();
+    const toast = useToast();
 
     // Derive the checksummed wallet address from Wagmi's connected account
     const walletAddr = isConnected && address ? getAddress(address) : "";
@@ -45,13 +48,13 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
         e.preventDefault()
 
         if (!walletAddr) {
-            alert("Please connect your wallet using the button above.");
+            toast.error("Please connect your wallet using the button above.");
             return;
         }
 
         try {
             if (!window.ethereum) {
-                alert("Please Connect your Ethereum Wallet!");
+                toast.error("Please Connect your Ethereum Wallet!");
                 return;
             }
 
@@ -82,9 +85,10 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
 
             router.push("/dashboard");
             router.refresh();
-        } catch (error) {
-            alert("Error while Login.\n" + error)
-            return
+        } catch (error: any) {
+            const errorMsg = extractErrorMsg(error, "Unknown error occurred");
+            toast.error("Login failed: " + errorMsg);
+            return;
         }
     }
 

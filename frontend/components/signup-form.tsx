@@ -31,9 +31,12 @@ import { getAddress } from "ethers";
 import { useRouter } from "next/navigation";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
+import { useToast } from "@/contexts/ToastContext";
+import { extractErrorMsg } from "@/lib/utils";
 
 const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
   const [details, setDetails] = useState({ email: "", username: "", role: "" })
+  const toast = useToast();
   const router = useRouter();
   const { address, isConnected } = useAccount();
 
@@ -43,12 +46,12 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
   const handleSignup = async (e: React.SubmitEvent) => {
     e.preventDefault()
     if (!walletAddr) {
-      alert("Please connect your wallet using the button above.");
+      toast.error("Please connect your wallet using the button above.");
       return;
     }
     const backendUri = process.env.NEXT_PUBLIC_API_URL;
     if (!backendUri) {
-      alert("Backend URI Missing!");
+      toast.error("Backend URI Missing!");
       return;
     }
 
@@ -63,8 +66,9 @@ const SignupForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (error) {
-      alert("Error in Signup!" + error);
+    } catch (error: any) {
+      const errorMsg = extractErrorMsg(error, "Unknown error occurred");
+      toast.error("Signup failed: " + errorMsg);
       return;
     }
 
