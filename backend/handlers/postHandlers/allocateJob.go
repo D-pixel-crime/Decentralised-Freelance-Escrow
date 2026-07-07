@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/D-pixel-crime/Freelance_Escrow/backend/contracts"
+	"github.com/D-pixel-crime/Freelance_Escrow/backend/contracts/factory"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/charmbracelet/log"
@@ -99,12 +99,42 @@ func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bs
 	
 	confirmationPeriod := big.NewInt(int64(time.Hour * 24 * 2))
 
-	contractAddr, _, _, err := contracts.DeployFreelanceEscrow(authenticatedTransactor, client, jobId, clientAddr, freelancerAddr, arbitratorAddr, confirmationPeriod)
+	authenticatedTransactor.GasLimit = uint64(3000000)
+
+	factoryAddr := os.Getenv("FACTORY_ADDRESS")
+	if factoryAddr == "" {
+		return "", "", fmt.Errorf("FACTORY_ADDRESS env var is missing")
+	}
+
+	factoryInstance, err := factory.NewFactory(common.HexToAddress(factoryAddr), client)
 	if err != nil {
 		return "", "", err
 	}
 
-	return contractAddr.Hex(), arbitratorAccountStr, nil
+	tx, err := factoryInstance.CreateEscrow(authenticatedTransactor, jobId, clientAddr, freelancerAddr, arbitratorAddr, confirmationPeriod)
+	if err != nil {
+		return "", "", err
+	}
+
+	receipt, err := bind.WaitMined(context.Background(), client, tx)
+	if err != nil {
+		return "", "", err
+	}
+
+	var childContractAddr string
+	for _, vLog := range receipt.Logs {
+		event, err := factoryInstance.ParseEscrowCreated(*vLog)
+		if err == nil && event != nil {
+			childContractAddr = event.EscrowAddress.Hex()
+			break
+		}
+	}
+
+	if childContractAddr == "" {
+		return "", "", fmt.Errorf("EscrowCreated event not found in logs")
+	}
+
+	return childContractAddr, arbitratorAccountStr, nil
 }
 
 func updateJob(freelancerEthAccount, contractAddr string, jobId bson.ObjectID, arbitratorAccountStr string) error {
