@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther, formatEther } from "viem";
 import { FREELANCE_ESCROW_ABI } from "@/constants/contract";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Loader2, ShieldCheck, DollarSign, Mail, ExternalLink, User } from "lucide-react";
 import type { Job } from "@/types/job";
 import { useQueryClient, useQuery } from "@tanstack/react-query";

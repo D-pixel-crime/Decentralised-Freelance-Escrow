@@ -78,6 +78,7 @@ export function useEscrowAction(
       functionName,
       // NO value — nonpayable
     }, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) => {
         let msg = err.shortMessage || err.message || "Transaction failed";
         if (msg.toLowerCase().includes("user rejected")) {

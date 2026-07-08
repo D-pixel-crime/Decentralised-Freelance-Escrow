@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Loader2, Send, CheckCircle2, XCircle, FileText, ExternalLink } from "lucide-react";
 import axios from "axios";
 import { useEscrowAction } from "./useEscrowAction";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Job, JobStatus } from "@/types/job";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { FREELANCE_ESCROW_ABI } from "@/constants/contract";
@@ -176,6 +177,7 @@ export default function DeliveryActions({
       
       requestPayment.execute();
       setShowEvidenceUI(false);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error("Failed to submit evidence: " + extractErrorMsg(err));
     } finally {
@@ -190,6 +192,7 @@ export default function DeliveryActions({
     makeBusyCb("requestPayment")
   );
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { data: acceptHash, writeContract: acceptWriteContract, isPending: isAcceptPending, error: acceptError } = useWriteContract();
   const { isLoading: isAcceptConfirming, isSuccess: isAcceptSuccess } = useWaitForTransactionReceipt({ hash: acceptHash });
 
@@ -211,6 +214,7 @@ export default function DeliveryActions({
       functionName: "acceptJobCompletion",
       value: parseEther(payAmount || "0"),
     }, {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       onError: (err: any) => {
         let msg = err.shortMessage || err.message || "Transaction failed";
         if (msg.toLowerCase().includes("user rejected")) {

@@ -24,6 +24,19 @@ export default function JobCardActions({
 }) {
   const [busyMap, setBusyMap] = useState<Record<string, boolean>>({});
 
+  const isDisputed = job.status === "RANDOM_DISPUTED" || job.status === "PAYMENT_DISPUTED";
+  const { data: arbitratorContact } = useQuery({
+    queryKey: ["contact", job.arbitratorEth, "arbitrator"],
+    queryFn: async () => {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/get/contact/${job.arbitratorEth}?role=arbitrator`,
+        { withCredentials: true }
+      );
+      return res.data;
+    },
+    enabled: isDisputed && !!job.arbitratorEth && role !== "arbitrator",
+  });
+
   const makeBusyCb = useCallback(
     (key: string) => (busy: boolean) => {
       setBusyMap((prev) => {
@@ -72,21 +85,6 @@ export default function JobCardActions({
   if (terminalStatuses.includes(job.status) && job.status !== "PAYMENT_DISPUTED") {
     // PAYMENT_DISPUTED might still show danger zone info
   }
-
-  // ── Dispute Info for Client & Freelancer ──
-  const isDisputed = job.status === "RANDOM_DISPUTED" || job.status === "PAYMENT_DISPUTED";
-  
-  const { data: arbitratorContact } = useQuery({
-    queryKey: ["contact", job.arbitratorEth, "arbitrator"],
-    queryFn: async () => {
-      const res = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/get/contact/${job.arbitratorEth}?role=arbitrator`,
-        { withCredentials: true }
-      );
-      return res.data;
-    },
-    enabled: isDisputed && !!job.arbitratorEth && role !== "arbitrator",
-  });
 
   return (
     <>

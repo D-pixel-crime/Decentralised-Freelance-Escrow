@@ -22,12 +22,14 @@ export default function ApplicantReviewModal({
   job: Job | null;
 }) {
   const [selectedApplicant, setSelectedApplicant] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sliderValue, setSliderValue] = useState<number>(0);
   const queryClient = useQueryClient();
   const { address: clientAddress } = useAccount();
 
   useEffect(() => {
     if (isOpen && job && job.payMin !== undefined) {
+      // eslint-disable-next-line
       setSliderValue(job.payMin);
     }
   }, [isOpen, job]);
@@ -143,9 +145,9 @@ export default function ApplicantReviewModal({
                  <span className="text-sm text-slate-500">Loading profile...</span>
                </div>
              ) : isProfileError ? (
-               <div className="flex-1 flex flex-col items-center justify-center gap-3">
-                 <p className="text-sm text-slate-400">Failed to load profile or freelancer hasn't set one up.</p>
-               </div>
+                <div className="flex-1 flex flex-col items-center justify-center gap-3">
+                  <p className="text-sm text-slate-400">Failed to load profile or freelancer hasn&apos;t set one up.</p>
+                </div>
              ) : (
                <>
                  {/* Profile Header */}

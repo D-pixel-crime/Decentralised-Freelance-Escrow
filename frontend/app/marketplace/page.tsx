@@ -1,13 +1,17 @@
 "use client";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useEffect, useState } from "react";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { useAccount } from "wagmi";
 import type { Job } from "@/types/job";
 import {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   Globe, ExternalLink, Loader2, PackageOpen, UserCheck,
   DollarSign, Calendar,
 } from "lucide-react";

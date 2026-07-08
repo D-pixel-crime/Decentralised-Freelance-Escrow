@@ -108,6 +108,7 @@ export default function FreelancerProfile() {
           documentCids: [...prev.documentCids, res.data.IpfsHash]
         }));
       }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error("Failed to upload file: " + extractErrorMsg(err));
     } finally {

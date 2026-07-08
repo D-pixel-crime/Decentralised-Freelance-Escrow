@@ -85,6 +85,7 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
 
             router.push("/dashboard");
             router.refresh();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             const errorMsg = extractErrorMsg(error, "Unknown error occurred");
             toast.error("Login failed: " + errorMsg);

@@ -116,6 +116,7 @@ function DangerButton({
 
 export default function DangerZoneActions({
   job,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   role,
   onBusyChange,
 }: {

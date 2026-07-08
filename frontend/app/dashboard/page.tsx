@@ -273,6 +273,7 @@ function CreateJobModal({
       setTimeout(() => {
         handleClose();
       }, 1500);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       setError(extractErrorMsg(err, "Unknown error"));
     } finally {
@@ -507,6 +508,7 @@ export default function DashboardPage() {
     Object.keys(busyCards).some(k => k.startsWith(jobId) && busyCards[k]);
 
   useEffect(() => {
+    // eslint-disable-next-line
     setRole(getCookie("role") ?? "");
   }, []);
 

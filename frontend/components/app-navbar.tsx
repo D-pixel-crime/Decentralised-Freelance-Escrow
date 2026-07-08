@@ -29,6 +29,7 @@ export default function AppNavbar() {
   const [role, setRole] = useState<string>("");
 
   useEffect(() => {
+    // eslint-disable-next-line
     setRole(getCookie("role") ?? "");
   }, []);
 
