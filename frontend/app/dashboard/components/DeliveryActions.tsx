@@ -190,7 +190,7 @@ export default function DeliveryActions({
     makeBusyCb("requestPayment")
   );
 
-  const { data: acceptHash, writeContract: acceptWriteContract, isPending: isAcceptPending, error: acceptError } = useWriteContract();
+  const { data: acceptHash, writeContract: acceptWriteContract, isPending: isAcceptPending } = useWriteContract();
   const { isLoading: isAcceptConfirming, isSuccess: isAcceptSuccess } = useWaitForTransactionReceipt({ hash: acceptHash });
 
   // Bubble accept job busy state

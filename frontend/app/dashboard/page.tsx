@@ -507,7 +507,8 @@ export default function DashboardPage() {
     Object.keys(busyCards).some(k => k.startsWith(jobId) && busyCards[k]);
 
   useEffect(() => {
-    setRole(getCookie("role") ?? "");
+    const init = () => setRole(getCookie("role") ?? "");
+    init();
   }, []);
 
   const { data: jobs, isLoading, isError, isRefetching } = useQuery<Job[]>({

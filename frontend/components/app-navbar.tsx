@@ -28,7 +28,8 @@ export default function AppNavbar() {
   const [role, setRole] = useState<string>("");
 
   useEffect(() => {
-    setRole(getCookie("role") ?? "");
+    const init = () => setRole(getCookie("role") ?? "");
+    init();
   }, []);
 
   const handleSignOut = async () => {
