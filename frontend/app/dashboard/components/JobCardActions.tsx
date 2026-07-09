@@ -117,7 +117,6 @@ export default function JobCardActions({
       {/* Danger zone: Break Deal / Revert Cancel / Raise Dispute */}
       <DangerZoneActions
         job={job}
-        role={role}
         onBusyChange={makeBusyCb("danger")}
       />
     </>

@@ -16,25 +16,15 @@ type applyJobRequest struct {
 }
 
 func ApplyJob(c *gin.Context) {
-	role, exists := c.Get("role")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Role not found in context"})
-		return
-	}
-	roleStr, ok := role.(string)
-	if !ok || roleStr != "freelancer" {
+	roleStr := c.GetString("role")
+	if roleStr != "freelancer" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Only freelancers are authorized to apply for jobs"})
 		return
 	}
 
-	ethAccount, exists := c.Get("ethAccount")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "EthAccount not found in context"})
-		return
-	}
-	ethAccountStr, ok := ethAccount.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ethAccount type"})
+	ethAccountStr := c.GetString("ethAccount")
+	if ethAccountStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing or invalid ethAccount in context"})
 		return
 	}
 
@@ -55,7 +45,6 @@ func ApplyJob(c *gin.Context) {
 	defer cancel()
 
 	filter := bson.M{"_id": jobIdObj}
-	// Using $push to append the freelancer's ethAccount to the applicants array
 	update := bson.M{
 		"$push": bson.M{
 			"applicants": ethAccountStr,

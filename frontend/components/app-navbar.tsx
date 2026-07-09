@@ -7,7 +7,6 @@ import { LayoutDashboard, Store, LogOut, Loader2 } from "lucide-react";
 import { useDisconnect } from "wagmi";
 import axios from "axios";
 
-/** Clears all non-HttpOnly cookies set by the frontend during login/signup. */
 function clearFrontendCookies() {
   const cookieNames = ["username", "email", "role", "ethAccount"];
   for (const name of cookieNames) {
@@ -29,7 +28,6 @@ export default function AppNavbar() {
   const [role, setRole] = useState<string>("");
 
   useEffect(() => {
-    // eslint-disable-next-line
     setRole(getCookie("role") ?? "");
   }, []);
 
@@ -51,7 +49,6 @@ export default function AppNavbar() {
     setSigningOut(false);
   };
 
-  /* Build nav items dynamically based on role — hide Marketplace for clients and arbitrators */
   const navItems = [
     { href: "/dashboard", label: "My Dashboard", icon: LayoutDashboard, show: true },
     { href: "/marketplace", label: "Marketplace", icon: Store, show: role !== "client" && role !== "arbitrator" },

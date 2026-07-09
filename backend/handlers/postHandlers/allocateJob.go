@@ -20,7 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 type jobAllocationRequest struct {
@@ -29,18 +28,6 @@ type jobAllocationRequest struct {
 	ChainId              int           `json:"chainId" binding:"required"`
 }
 
-func checkFreelancer(freelancerEthAccount string) (bson.ObjectID, error) {
-	var res models.Freelancer
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
-	filter := bson.M{"ethAccount": freelancerEthAccount}
-
-	err := coll.FindOne(context.TODO(), filter).Decode(&res)
-	if err != nil {
-		return bson.ObjectID{}, err
-	}
-
-	return res.ID, nil
-}
 
 func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bson.ObjectID) (string, string, error) {
 	rpcURL := os.Getenv("WEB3_RPC_URL")
@@ -137,76 +124,53 @@ func deployContract(freelancerEthAccount, clientEthAccount string, mongoJobId bs
 	return childContractAddr, arbitratorAccountStr, nil
 }
 
-func updateJob(freelancerEthAccount, contractAddr string, jobId bson.ObjectID, arbitratorAccountStr string) error {
-	var res models.Job
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
-	filter := bson.M{"_id": jobId}
-
-	freelancerId, err := checkFreelancer(freelancerEthAccount)
-	if err != nil {
-		return err
-	}
-
-	update := bson.M{"$set": bson.M{"freelancerId": freelancerId, "status": models.AGREED, "contractAddress": contractAddr, "arbitratorEth": arbitratorAccountStr}}
-	err = coll.FindOneAndUpdate(context.TODO(), filter, update).Decode(&res)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func getClientEthAccount(jobId bson.ObjectID) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var job models.Job
-	jobsColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
-	if err := jobsColl.FindOne(ctx, bson.M{"_id": jobId}).Decode(&job); err != nil {
-		return "", err
-	}
-
-	var client models.Client
-	clientColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
-	if err := clientColl.FindOne(ctx, bson.M{"_id": job.ClientID}).Decode(&client); err != nil {
-		return "", err
-	}
-
-	return client.EthAccount, nil
-}
-
 func AllocateJob(c *gin.Context) {
 	var reqBody jobAllocationRequest
-	var err error
 
-	if err = c.ShouldBindJSON(&reqBody); err != nil {
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect Request Format!"})
 		return
 	}
 
-	clientEthAccount, err := getClientEthAccount(reqBody.JobId)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Job or Client Not Found!"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error! " + err.Error()})
-		}
+	dbName := os.Getenv("DATABASE_NAME")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var job models.Job
+	if err := utils.DBClient.Database(dbName).Collection("jobs").FindOne(ctx, bson.M{"_id": reqBody.JobId}).Decode(&job); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job Not Found!"})
 		return
 	}
 
-	contractAddr, arbitratorAccountStr, err := deployContract(reqBody.FreelancerEthAccount, clientEthAccount, reqBody.JobId)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!" + err.Error()})
+	var client models.Client
+	if err := utils.DBClient.Database(dbName).Collection("client").FindOne(ctx, bson.M{"_id": job.ClientID}).Decode(&client); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client Not Found!"})
 		return
 	}
 
-	err = updateJob(reqBody.FreelancerEthAccount, contractAddr, reqBody.JobId, arbitratorAccountStr)
+	var freelancer models.Freelancer
+	if err := utils.DBClient.Database(dbName).Collection("freelancer").FindOne(ctx, bson.M{"ethAccount": reqBody.FreelancerEthAccount}).Decode(&freelancer); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Freelancer Not Found!"})
+		return
+	}
+
+	contractAddr, arbitratorAccountStr, err := deployContract(reqBody.FreelancerEthAccount, client.EthAccount, reqBody.JobId)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			c.JSON(http.StatusNotFound, gin.H{"error": "User Not Found!"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!"})
-		}
+		log.Errorf("Failed to deploy contract: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error! " + err.Error()})
+		return
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"freelancerId":    freelancer.ID,
+			"status":          models.AGREED,
+			"contractAddress": contractAddr,
+			"arbitratorEth":   arbitratorAccountStr,
+		},
+	}
+	if _, err := utils.DBClient.Database(dbName).Collection("jobs").UpdateOne(ctx, bson.M{"_id": reqBody.JobId}, update); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!"})
 		return
 	}
 

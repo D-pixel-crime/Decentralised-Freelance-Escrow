@@ -41,7 +41,6 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
     const { address, isConnected } = useAccount();
     const toast = useToast();
 
-    // Derive the checksummed wallet address from Wagmi's connected account
     const walletAddr = isConnected && address ? getAddress(address) : "";
 
     const handleLogin = async (e: React.SubmitEvent) => {
@@ -85,8 +84,7 @@ const LoginForm = ({ ...props }: React.ComponentProps<typeof Card>) => {
 
             router.push("/dashboard");
             router.refresh();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } catch (error: any) {
+        } catch (error) {
             const errorMsg = extractErrorMsg(error, "Unknown error occurred");
             toast.error("Login failed: " + errorMsg);
             return;

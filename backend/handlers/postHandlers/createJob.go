@@ -15,66 +15,26 @@ import (
 type jobCreationRequest struct {
 	ClientEthAccount string        `json:"clientEthAccount" binding:"required"`
 	JobId            bson.ObjectID `json:"jobId" binding:"required"`
-
-	// ── Web2 metadata ──
-	Title        string  `json:"title" binding:"required"`
-	Description  string  `json:"description"`
-	Deadline     string  `json:"deadline"`
-	ContactEmail string  `json:"contactEmail"`
-	PayMin       float64 `json:"payMin"`
-	PayMax       float64 `json:"payMax"`
-}
-
-func checkClient(clientEthAccount string) (bson.ObjectID, error) {
-	var res models.Client
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
-	filter := bson.M{"ethAccount": clientEthAccount}
-
-	err := coll.FindOne(context.TODO(), filter).Decode(&res)
-	if err != nil {
-		return bson.ObjectID{}, err
-	}
-
-	return res.ID, nil
-}
-
-func jobCreation(req jobCreationRequest) error {
-	clientId, err := checkClient(req.ClientEthAccount)
-	if err != nil {
-		return err
-	}
-
-	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
-	doc := models.Job{
-		ClientID:     clientId,
-		Status:       models.UNALLOCATED,
-		Title:        req.Title,
-		Description:  req.Description,
-		Deadline:     req.Deadline,
-		ContactEmail: req.ContactEmail,
-		PayMin:       req.PayMin,
-		PayMax:       req.PayMax,
-	}
-
-	_, err = coll.InsertOne(context.Background(), doc)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	Title            string        `json:"title" binding:"required"`
+	Description      string        `json:"description"`
+	Deadline         string        `json:"deadline"`
+	ContactEmail     string        `json:"contactEmail"`
+	PayMin           float64       `json:"payMin"`
+	PayMax           float64       `json:"payMax"`
 }
 
 func CreateJob(c *gin.Context) {
 	var reqBody jobCreationRequest
-	var err error
 
-	if err = c.ShouldBindJSON(&reqBody); err != nil {
+	if err := c.ShouldBindJSON(&reqBody); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect Request Format!"})
 		return
 	}
 
-	err = jobCreation(reqBody)
-	if err != nil {
+	clientColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
+	var client models.Client
+
+	if err := clientColl.FindOne(context.TODO(), bson.M{"ethAccount": reqBody.ClientEthAccount}).Decode(&client); err != nil {
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User Not Found!"})
 		} else {
@@ -83,6 +43,22 @@ func CreateJob(c *gin.Context) {
 		return
 	}
 
+	jobsColl := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("jobs")
+	doc := models.Job{
+		ClientID:     client.ID,
+		Status:       models.UNALLOCATED,
+		Title:        reqBody.Title,
+		Description:  reqBody.Description,
+		Deadline:     reqBody.Deadline,
+		ContactEmail: reqBody.ContactEmail,
+		PayMin:       reqBody.PayMin,
+		PayMax:       reqBody.PayMax,
+	}
+
+	if _, err := jobsColl.InsertOne(context.Background(), doc); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create job"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "Job Created!"})
 }
-

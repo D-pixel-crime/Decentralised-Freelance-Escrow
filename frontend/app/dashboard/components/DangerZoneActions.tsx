@@ -116,12 +116,10 @@ function DangerButton({
 
 export default function DangerZoneActions({
   job,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  role,
+
   onBusyChange,
 }: {
   job: Job;
-  role: string;
   onBusyChange: (busy: boolean) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);

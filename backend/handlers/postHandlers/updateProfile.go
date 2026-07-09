@@ -13,25 +13,15 @@ import (
 )
 
 func UpdateProfile(c *gin.Context) {
-	role, exists := c.Get("role")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Role not found in context"})
-		return
-	}
-	roleStr, ok := role.(string)
-	if !ok || roleStr != "freelancer" {
+	roleStr := c.GetString("role")
+	if roleStr != "freelancer" {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Only freelancers have a profile"})
 		return
 	}
 
-	ethAccount, exists := c.Get("ethAccount")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "EthAccount not found in context"})
-		return
-	}
-	ethAccountStr, ok := ethAccount.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ethAccount type"})
+	ethAccountStr := c.GetString("ethAccount")
+	if ethAccountStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing or invalid ethAccount in context"})
 		return
 	}
 

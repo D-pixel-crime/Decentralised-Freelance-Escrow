@@ -2,13 +2,11 @@ package authhandlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/D-pixel-crime/Freelance_Escrow/backend/models"
 	"github.com/D-pixel-crime/Freelance_Escrow/backend/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/spruceid/siwe-go"
@@ -23,87 +21,6 @@ type LoginVerificationRequest struct {
 	Signature  string `json:"signature" binding:"required"`
 }
 
-func signatureVerification(ethAccount, message, signature, nonce string) error {
-	siweMesssage, err := siwe.ParseMessage(message)
-	if err != nil {
-		return fmt.Errorf("Error Parsing SIWE Message! Error:%s", err)
-	}
-
-	_, err = siweMesssage.Verify(signature, nil, &nonce, nil)
-	if err != nil {
-		return fmt.Errorf("Signature Verification Failed! Error:%s", err)
-	}
-
-	if !strings.EqualFold(siweMesssage.GetAddress().String(), ethAccount) {
-		return fmt.Errorf("Signing Address Doesn't Match the Account Address! Error:%s", err)
-	}
-
-	return nil
-}
-
-func verifyUser(ethAccount, role, message, signature string) (string, string, error) {
-	filter := bson.M{"ethAccount": ethAccount}
-
-	var err error
-	var username, email string
-	var coll *mongo.Collection
-
-	switch role {
-	case "client":
-		var res models.Client
-		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("client")
-		err = coll.FindOne(context.TODO(), filter).Decode(&res)
-		if err != nil {
-			if err == mongo.ErrNoDocuments {
-				return "", "", err
-			}
-			return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
-		}
-
-		username = res.Username
-		email = res.Email
-	case "freelancer":
-		var res models.Freelancer
-		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("freelancer")
-		err = coll.FindOne(context.TODO(), filter).Decode(&res)
-		if err != nil {
-			if err == mongo.ErrNoDocuments {
-				return "", "", err
-			}
-			return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
-		}
-
-		username = res.Username
-		email = res.Email
-	case "arbitrator":
-		var res models.Arbitrator
-		coll = utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection("arbitrator")
-		err = coll.FindOne(context.TODO(), filter).Decode(&res)
-		if err != nil {
-			if err == mongo.ErrNoDocuments {
-				return "", "", err
-			}
-			return "", "", fmt.Errorf("Error Fetching from Database! Error:%s", err)
-		}
-
-		username = res.Username
-		email = res.Email
-	default:
-		return "", "", fmt.Errorf("Invalid User Type!")
-	}
-
-	nonce, err := utils.RedisClient.Get(context.TODO(), "nonce:"+ethAccount).Result()
-	if err != nil {
-		return "", "", fmt.Errorf("Error getting nonce from Redis (may be expired)! Error:%s", err)
-	}
-	utils.RedisClient.Del(context.TODO(), "nonce:"+ethAccount)
-
-	if err = signatureVerification(ethAccount, message, signature, nonce); err != nil {
-		return "", "", err
-	}
-	return username, email, nil
-}
-
 func VerifyLogin(c *gin.Context) {
 	var reqBody LoginVerificationRequest
 
@@ -112,19 +29,47 @@ func VerifyLogin(c *gin.Context) {
 		return
 	}
 
-	username, email, err := verifyUser(reqBody.EthAccount, reqBody.Role, reqBody.Message, reqBody.Signature)
-	if err != nil {
+	filter := bson.M{"ethAccount": reqBody.EthAccount}
+	coll := utils.DBClient.Database(os.Getenv("DATABASE_NAME")).Collection(reqBody.Role)
+
+	var user struct {
+		Username string `bson:"username"`
+		Email    string `bson:"email"`
+	}
+
+	if err := coll.FindOne(context.TODO(), filter).Decode(&user); err != nil {
 		if err == mongo.ErrNoDocuments {
 			c.JSON(http.StatusNotFound, gin.H{"error": "User Not Found!"})
-		} else if err.Error() == "Invalid User Type!" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error!"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error Fetching from Database!"})
 		}
 		return
 	}
 
-	accessToken, refreshToken, err := utils.GenerateTokens(username, email, reqBody.Role, reqBody.EthAccount)
+	nonce, err := utils.RedisClient.Get(context.TODO(), "nonce:"+reqBody.EthAccount).Result()
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Nonce expired or invalid!"})
+		return
+	}
+	utils.RedisClient.Del(context.TODO(), "nonce:"+reqBody.EthAccount)
+
+	siweMessage, err := siwe.ParseMessage(reqBody.Message)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Error Parsing SIWE Message!"})
+		return
+	}
+
+	if _, err := siweMessage.Verify(reqBody.Signature, nil, &nonce, nil); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Signature Verification Failed!"})
+		return
+	}
+
+	if !strings.EqualFold(siweMessage.GetAddress().String(), reqBody.EthAccount) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Signing Address Doesn't Match the Account Address!"})
+		return
+	}
+
+	accessToken, refreshToken, err := utils.GenerateTokens(user.Username, user.Email, reqBody.Role, reqBody.EthAccount)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error Generating Token: " + err.Error()})
 		return
@@ -136,7 +81,7 @@ func VerifyLogin(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Login Successful",
-		"username": username,
-		"email":    email,
+		"username": user.Username,
+		"email":    user.Email,
 	})
 }

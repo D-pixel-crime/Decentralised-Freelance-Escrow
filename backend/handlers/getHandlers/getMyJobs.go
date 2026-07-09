@@ -136,71 +136,41 @@ func jitSyncJobs(jobs []models.Job, dbName string) []models.Job {
 }
 
 func GetMyJobs(c *gin.Context) {
-	// Extract role and ethAccount from Gin context
-	role, exists := c.Get("role")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Role not found in context"})
-		return
-	}
-	roleStr, ok := role.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid role type"})
+	roleStr := c.GetString("role")
+	ethAccountStr := c.GetString("ethAccount")
+
+	if roleStr == "" || ethAccountStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Missing or invalid context variables"})
 		return
 	}
 
-	ethAccount, exists := c.Get("ethAccount")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "EthAccount not found in context"})
-		return
-	}
-	ethAccountStr, ok := ethAccount.(string)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid ethAccount type"})
-		return
-	}
-
-	// Correcting type mismatches: The Gin context provides 'ethAccount' as a string, 
-	// but the jobs collection uses 'bson.ObjectID' for ClientID/FreelancerID.
-	// We convert the string ID (ethAccount) into an ObjectID by querying the respective collection first.
 	var userID bson.ObjectID
 	dbName := os.Getenv("DATABASE_NAME")
-	
-	if roleStr == "client" {
-		var client models.Client
-		err := utils.DBClient.Database(dbName).Collection("client").FindOne(context.TODO(), bson.M{"ethAccount": ethAccountStr}).Decode(&client)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+
+	if roleStr == "client" || roleStr == "freelancer" {
+		var user struct{ ID bson.ObjectID `bson:"_id"` }
+		if err := utils.DBClient.Database(dbName).Collection(roleStr).FindOne(context.TODO(), bson.M{"ethAccount": ethAccountStr}).Decode(&user); err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 			return
 		}
-		userID = client.ID
-	} else if roleStr == "freelancer" {
-		var freelancer models.Freelancer
-		err := utils.DBClient.Database(dbName).Collection("freelancer").FindOne(context.TODO(), bson.M{"ethAccount": ethAccountStr}).Decode(&freelancer)
-		if err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Freelancer not found"})
-			return
-		}
-		userID = freelancer.ID
-	} else if roleStr == "arbitrator" {
-		// Arbitrator uses ethAccountStr directly for filtering, so no ObjectID fetch needed.
-	} else {
+		userID = user.ID
+	} else if roleStr != "arbitrator" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role"})
 		return
 	}
 
-	// Wrap in a timeout context for resiliency
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Query jobs collection
 	coll := utils.DBClient.Database(dbName).Collection("jobs")
-	
 	var filter bson.M
-	if roleStr == "client" {
+
+	switch roleStr {
+	case "client":
 		filter = bson.M{"clientId": userID}
-	} else if roleStr == "arbitrator" {
+	case "arbitrator":
 		filter = bson.M{"arbitratorEth": ethAccountStr}
-	} else {
+	default:
 		filter = bson.M{
 			"$or": []bson.M{
 				{"freelancerId": userID},
@@ -226,7 +196,6 @@ func GetMyJobs(c *gin.Context) {
 		jobs = []models.Job{}
 	}
 
-	// ─── JIT SYNC: Reconcile on-chain state before responding ───
 	jobs = jitSyncJobs(jobs, dbName)
 
 	c.JSON(http.StatusOK, jobs)

@@ -22,16 +22,12 @@ export default function ApplicantReviewModal({
   job: Job | null;
 }) {
   const [selectedApplicant, setSelectedApplicant] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [sliderValue, setSliderValue] = useState<number>(0);
+
   const queryClient = useQueryClient();
   const { address: clientAddress } = useAccount();
 
   useEffect(() => {
-    if (isOpen && job && job.payMin !== undefined) {
-      // eslint-disable-next-line
-      setSliderValue(job.payMin);
-    }
+    // No-op for now since sliderValue was removed, left structure intact
   }, [isOpen, job]);
 
   // Fetch selected applicant's profile
