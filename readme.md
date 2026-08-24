@@ -9,15 +9,33 @@ A decentralized freelance platform that replaces traditional intermediary servic
 3. **Settlement** -- The client approves the deliverables and the contract releases funds directly to the freelancer's wallet.
 4. **Disputes** -- If either party raises a dispute, funds are frozen until a resolution is executed programmatically.
 
-## Architecture
 
-The repository is a monorepo with three independent components:
+## Project Structure
 
 ```
-.
-├── contracts/   # Solidity smart contracts (Foundry)
-├── backend/     # Off-chain API server (Go / Gin)
-└── frontend/    # Web client (Next.js / TypeScript)
+contracts/
+├── src/
+│   ├── FreelanceEscrow.sol    # Core escrow logic (deposits, releases, disputes)
+│   └── EscrowFactory.sol      # Factory for deploying per-job escrow instances
+├── script/                    # Foundry deploy scripts
+└── foundry.toml
+
+backend/
+├── main.go                    # Entrypoint (bindings generation, server setup)
+├── contracts/                 # Auto-generated Go bindings
+├── handlers/                  # HTTP request handlers
+├── routers/                   # Route definitions (auth, GET, POST)
+├── models/                    # Data models
+├── indexer/                   # On-chain event indexer (currently JIT)
+└── utils/                     # DB, Redis, Web3 connection helpers
+
+frontend/
+├── app/                       # Next.js App Router pages
+├── components/                # React components (shadcn/ui based)
+├── constants/                 # ABI and contract addresses
+├── contexts/                  # React context providers
+├── lib/                       # Utility functions
+└── types/                     # TypeScript type definitions
 ```
 
 | Layer | Key Technologies |
@@ -126,32 +144,4 @@ make check-contracts   # forge build, fmt --check, test
 make check-backend     # go build, go test
 make check-frontend    # pnpm lint, pnpm build
 make check-all         # all of the above
-```
-
-## Project Structure
-
-```
-contracts/
-├── src/
-│   ├── FreelanceEscrow.sol    # Core escrow logic (deposits, releases, disputes)
-│   └── EscrowFactory.sol      # Factory for deploying per-job escrow instances
-├── script/                    # Foundry deploy scripts
-└── foundry.toml
-
-backend/
-├── main.go                    # Entrypoint (bindings generation, server setup)
-├── contracts/                 # Auto-generated Go bindings
-├── handlers/                  # HTTP request handlers
-├── routers/                   # Route definitions (auth, GET, POST)
-├── models/                    # Data models
-├── indexer/                   # On-chain event indexer (currently JIT)
-└── utils/                     # DB, Redis, Web3 connection helpers
-
-frontend/
-├── app/                       # Next.js App Router pages
-├── components/                # React components (shadcn/ui based)
-├── constants/                 # ABI and contract addresses
-├── contexts/                  # React context providers
-├── lib/                       # Utility functions
-└── types/                     # TypeScript type definitions
 ```
